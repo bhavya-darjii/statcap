@@ -1,65 +1,65 @@
 /* eslint-disable */
 // @ts-nocheck
-export const TEACHER_NAV = [
+export const INSTRUCTOR_NAV = [
   { path: '/teacher', label: 'Home', category: 'Overview' },
-  { path: '/teacher/profile', label: 'Profile', category: 'Overview' },
-  { path: '/teacher/lesson-plan', label: 'Lesson Plan', category: 'Classroom' },
-  { path: '/teacher/lecture-overview', label: 'Lecture Overview', category: 'Classroom' },
-  { path: '/teacher/attendance', label: 'Attendance', category: 'Classroom' },
-  { path: '/teacher/question-bank', label: 'Question Bank', category: 'Classroom' },
-  { path: '/teacher/examination', label: 'Question Papers', category: 'Classroom' },
-  { path: '/teacher/marks', label: 'Marks', category: 'Performance' },
-  { path: '/teacher/course-analytics', label: 'Course Analytics', category: 'Performance' },
-  { path: '/teacher/student-analytics', label: 'Student Analytics', category: 'Performance' },
-  { path: '/teacher/create-course', label: '+ New Course', highlight: true },
+  { path: '/teacher/profile', label: 'Cadre Profile', category: 'Overview' },
+  { path: '/teacher/lesson-plan', label: 'Training Plan', category: 'Cadre Modules' },
+  { path: '/teacher/lecture-overview', label: 'Lecture Overview', category: 'Cadre Modules' },
+  { path: '/teacher/question-bank', label: 'Question Bank', category: 'Cadre Modules' },
+  { path: '/teacher/examination', label: 'Assessments', category: 'Cadre Modules' },
+  { path: '/teacher/marks', label: 'Evaluation & Scores', category: 'Competencies' },
+  { path: '/teacher/course-analytics', label: 'Cohort Analytics', category: 'Competencies' },
+  { path: '/teacher/student-analytics', label: 'Skill Gap Analytics', category: 'Competencies' },
+  { path: '/teacher/create-course', label: '+ New Module', highlight: true },
 ];
 
+export const TEACHER_NAV = INSTRUCTOR_NAV;
+
 export const ADMIN_NAV = [
-  { path: '/admin', label: 'Dashboard' },
+  { path: '/admin', label: 'Directorate Dashboard' },
 ];
 
 export const HOD_NAV = [
-  { path: '/hod', label: 'Dashboard' },
+  { path: '/hod', label: 'Division Dashboard' },
 ];
 
-export const STUDENT_NAV = [
+export const TRAINEE_NAV = [
   { path: '/student', label: 'Dashboard' },
-  { path: '/student/attendance', label: 'Attendance' },
-  { path: '/student/lecture-vault', label: 'Lecture Vault' },
+  { path: '/student/lecture-vault', label: 'Official Training Vault' },
 ];
 
-export const PARENT_NAV = [
-  { path: '/parent', label: 'Portal' },
-  { path: '/parent/progress', label: 'Progress Timeline' },
-];
+export const STUDENT_NAV = TRAINEE_NAV;
 
 export const REGISTRAR_NAV = [
-  { path: '/registrar', label: 'Dashboard' },
+  { path: '/registrar', label: 'Administration' },
 ];
 
 export const EXAM_CONTROLLER_NAV = [
-  { path: '/exam-controller', label: 'Dashboard' },
+  { path: '/exam-controller', label: 'Assessments Cell' },
 ];
 
-export const VELAAR_ADMIN_NAV = [
-  { path: '/velaar-admin', label: 'Institutions' },
+export const STATCAP_ADMIN_NAV = [
+  { path: '/velaar-admin', label: 'MoSPI National Hub' },
 ];
 
-export const PRINCIPAL_NAV = [
-  { path: '/principal', label: 'Dashboard' },
+export const VELAAR_ADMIN_NAV = STATCAP_ADMIN_NAV;
+
+export const DIRECTOR_NAV = [
+  { path: '/principal', label: 'Director General' },
 ];
+
+export const PRINCIPAL_NAV = DIRECTOR_NAV;
 
 export const getNavForRole = (role) => {
   const map = {
-    teacher: TEACHER_NAV,
+    teacher: INSTRUCTOR_NAV,
     admin: ADMIN_NAV,
     hod: HOD_NAV,
-    student: STUDENT_NAV,
-    parent: PARENT_NAV,
+    student: TRAINEE_NAV,
     registrar: REGISTRAR_NAV,
     examController: EXAM_CONTROLLER_NAV,
-    velaarAdmin: VELAAR_ADMIN_NAV,
-    principal: PRINCIPAL_NAV,
+    velaarAdmin: STATCAP_ADMIN_NAV,
+    principal: DIRECTOR_NAV,
   };
   return map[role] || [];
 };

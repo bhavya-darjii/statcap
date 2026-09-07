@@ -16,7 +16,6 @@ import TeacherLayout from './layouts/TeacherLayout';
 import AdminLayout from './layouts/AdminLayout';
 import StudentLayout from './layouts/StudentLayout';
 import HodLayout from './layouts/HodLayout';
-import ParentLayout from './layouts/ParentLayout';
 import PrincipalLayout from './layouts/PrincipalLayout';
 import TeacherHome from './pages/teacher/TeacherHome';
 import LessonPlanPage from './pages/teacher/LessonPlanPage';
@@ -26,7 +25,6 @@ import ExaminationEditor from './pages/teacher/ExaminationEditor';
 import CourseGeneratorPage from './pages/teacher/CourseGeneratorPage';
 import LectureOverview from './pages/teacher/LectureOverview';
 import CourseAnalytics from './pages/teacher/CourseAnalytics';
-import AttendanceSession from './pages/teacher/AttendanceSession';
 import TeacherProfile from './pages/teacher/TeacherProfile';
 import MarksDashboard from './pages/teacher/MarksDashboard';
 import EditMarks from './pages/teacher/EditMarks';
@@ -40,10 +38,7 @@ import SetupInstitutionPage from './pages/setup/SetupInstitutionPage';
 import VelaarAdminDashboard from './pages/admin/VelaarAdminDashboard';
 import ExamControllerDashboard from './pages/examcontroller/ExamControllerDashboard';
 import PrincipalDashboard from './pages/principal/PrincipalDashboard';
-import ParentPortal from './pages/parent/ParentPortal';
-import ProgressTimeline from './pages/parent/ProgressTimeline';
 import StudentDashboard from './pages/student/StudentDashboard';
-import AttendanceScanner from './pages/student/AttendanceScanner';
 import LectureVault from './pages/student/LectureVault';
 import PendingPage from './pages/auth/PendingPage';
 import PendingPageSkeleton from './components/skeletons/PendingPageSkeleton';
@@ -155,7 +150,6 @@ function App() {
     if (userRole === 'velaarAdmin')     return <Navigate to="/velaar-admin"    replace />;
     if (userRole === 'examController')  return <Navigate to="/exam-controller" replace />;
     if (userRole === 'principal')       return <Navigate to="/principal"       replace />;
-    if (userRole === 'parent')          return <Navigate to="/parent"          replace />;
     if (userRole === 'teacher')         return <Navigate to="/teacher"         replace />;
     if (userRole === 'pending')         return <Navigate to="/pending"         replace />;
     return <Navigate to="/pending" replace />;
@@ -200,21 +194,11 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={<StudentDashboard />} />
-                  <Route path="attendance" element={<AttendanceScanner />} />
                   <Route path="lecture-vault" element={<LectureVault />} />
                   <Route path="lecture-vault/:subjectSlug" element={<LectureVault />} />
                 </Route>
 
-                {/* Parent nested routes */}
-                <Route path="/parent" element={
-                  <ProtectedRoute allowedRoles={['parent']}>
-                    <ParentLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<ParentPortal />} />
-                  <Route path="progress" element={<ProgressTimeline />} />
-                </Route>
-
+                
                 {/* Principal nested routes */}
                 <Route path="/principal" element={
                   <ProtectedRoute allowedRoles={['principal']}>
@@ -238,7 +222,6 @@ function App() {
                 }>
                   <Route index element={<TeacherHome />} />
                   <Route path="lesson-plan" element={<LessonPlanPage />} />
-                  <Route path="attendance" element={<AttendanceSession />} />
                   <Route path="question-bank" element={<QuestionBankPage />} />
                   <Route path="examination" element={<ExaminationPage />} />
                   <Route path="examination/:examId" element={<ExaminationEditor />} />
