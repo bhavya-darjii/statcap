@@ -1,13 +1,13 @@
 /* eslint-disable */
 // @ts-nocheck
 import { useLocation } from 'react-router-dom';
-import VelaarCopilot from './VelaarCopilot';
+import StatCapCopilot from './StatCapCopilot';
 
 const HIDE_COPILOT_PATHS = ['/', '/pending', '/setup'];
 
 const ROLE_BASE_PATHS = {
-  admin: ['/admin', '/velaar-admin'],
-  velaarAdmin: ['/velaar-admin'],
+  admin: ['/admin', '/statcap-admin'],
+  statcapAdmin: ['/statcap-admin'],
   hod: ['/hod'],
   student: ['/student'],
   parent: ['/parent'],
@@ -29,7 +29,7 @@ const GlobalCopilot = ({ userRole }) => {
     return null;
   }
   
-  return <VelaarCopilot userRole={userRole} />;
+  return <StatCapCopilot userRole={userRole} />;
 };
 
 export default GlobalCopilot;

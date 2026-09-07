@@ -47,7 +47,7 @@ const THEMES = [
 export const getRandomThemeId = () => THEMES[Math.floor(Math.random() * THEMES.length)].id;
 
 const addFooter = (slide, index, subjectName, theme) => {
-  slide.addText(`${subjectName ? subjectName.toUpperCase() + '  |  ' : 'VELAAR  |  '}${String(index).padStart(2, '0')}`, {
+  slide.addText(`${subjectName ? subjectName.toUpperCase() + '  |  ' : 'STATCAP  |  '}${String(index).padStart(2, '0')}`, {
     x: 7.8, y: 7.02, w: 5, h: 0.18,
     fontFace: 'Aptos', fontSize: 8, color: theme.textMuted, margin: 0, align: 'right'
   });
@@ -56,8 +56,8 @@ const addFooter = (slide, index, subjectName, theme) => {
 export const downloadLecturePresentation = async (presentation, { subjectName, lectureTitle, themeId }) => {
   const pptx = new pptxgen();
   pptx.layout = 'LAYOUT_WIDE';
-  pptx.author = 'Velaar';
-  pptx.company = 'Velaar';
+  pptx.author = 'StatCap';
+  pptx.company = 'StatCap';
   pptx.subject = subjectName || 'Lecture presentation';
   pptx.title = presentation.title || lectureTitle || 'Lecture presentation';
   pptx.lang = 'en-IN';
@@ -159,6 +159,6 @@ export const downloadLecturePresentation = async (presentation, { subjectName, l
     addFooter(slide, index + 1, subjectName, theme);
   });
 
-  await pptx.writeFile({ fileName: `${cleanFileName(lectureTitle || presentation.title)}-velaar.pptx` });
+  await pptx.writeFile({ fileName: `${cleanFileName(lectureTitle || presentation.title)}-statcap.pptx` });
 };
 

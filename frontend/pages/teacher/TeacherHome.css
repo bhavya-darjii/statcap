@@ -20,11 +20,11 @@
   width: 100%;
 }
 
-.teacher-ai-prompt-slot .velaar-ai-wrapper {
+.teacher-ai-prompt-slot .statcap-ai-wrapper {
   max-width: 100%;
 }
 
-.teacher-ai-prompt-slot .velaar-ai-wrapper.focused {
+.teacher-ai-prompt-slot .statcap-ai-wrapper.focused {
   max-width: 100%;
 }
 

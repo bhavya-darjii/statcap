@@ -138,10 +138,10 @@ export default function AdminDashboard() {
   const [currentUserData, setCurrentUserData] = useState(null);
   const [updatingUser, setUpdatingUser] = useState(null);
 
-  // velaarAdmin institution picker
+  // statcapAdmin institution picker
   const [institutions, setInstitutions] = useState([]);
   const [selectedInstitutionId, setSelectedInstitutionId] = useState('');
-  const isVelaarAdmin = currentUserData?.user_type === 'velaarAdmin';
+  const isStatCapAdmin = currentUserData?.user_type === 'statcapAdmin';
   
   // Invite state
   const [inviteEmails, setInviteEmails] = useState('');
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
     student:        'Student',
     examController: 'Exam Controller',
     parent:         'Parent',
-    velaarAdmin:    'Velaar Admin',
+    statcapAdmin:    'StatCap Admin',
   };
 
   const fetchData = useCallback(async (showRefreshing = false) => {
@@ -187,8 +187,8 @@ export default function AdminDashboard() {
         if (adminData) {
           setCurrentUserData({ ...adminData });
 
-          if (adminData.user_type === 'velaarAdmin') {
-            // velaarAdmin: load ALL institutions
+          if (adminData.user_type === 'statcapAdmin') {
+            // statcapAdmin: load ALL institutions
             const { data: allInsts } = await supabase.from('institutions').select('*').order('name');
             setInstitutions(allInsts || []);
             // Don't load users until an institution is selected
@@ -208,7 +208,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // velaarAdmin: when they pick an institution, load its users
+  // statcapAdmin: when they pick an institution, load its users
   const handleInstitutionSelect = useCallback(async (instId) => {
     setSelectedInstitutionId(instId);
     if (!instId) { setUsers([]); return; }
@@ -275,13 +275,13 @@ export default function AdminDashboard() {
       label: "This Month's Cost",
       value: fmt(thisMonth.costINR || 0),
       valueClass: 'orange',
-      sub: `${thisMonth.calls || 0} Velaar calls this month`,
+      sub: `${thisMonth.calls || 0} StatCap calls this month`,
     },
     {
       icon: <IconChart />, accent: '#6366f1',
       label: 'Total Cost (All Time)',
       value: fmt(totals.totalCostINR || 0),
-      sub: `${totals.totalCalls || 0} total Velaar calls`,
+      sub: `${totals.totalCalls || 0} total StatCap calls`,
     },
     {
       icon: <IconToken />, accent: '#10b981',
@@ -309,7 +309,7 @@ export default function AdminDashboard() {
       icon: <IconUsers />, accent: '#8b5cf6',
       label: 'Active Teachers',
       value: teacherData.length,
-      sub: `${actionData.length} distinct Velaar actions`,
+      sub: `${actionData.length} distinct StatCap actions`,
     },
   ];
 
@@ -412,7 +412,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1>Admin Analytics</h1>
-              <p className="admin-header-sub">Real-time Velaar usage &amp; cost monitoring</p>
+              <p className="admin-header-sub">Real-time StatCap usage &amp; cost monitoring</p>
             </div>
           </div>
 
@@ -433,8 +433,8 @@ export default function AdminDashboard() {
 
         {/* FILTER STRIP */}
         <div className="glass-card filter-strip">
-          {/* velaarAdmin: institution selector */}
-          {isVelaarAdmin && (
+          {/* statcapAdmin: institution selector */}
+          {isStatCapAdmin && (
             <div className="filter-group">
               <label className="filter-label">Institution</label>
               <GlassSelect
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
 
         {/* ── PRE-REGISTRATION INVITES ── */}
         {/* Show invite panel only when an institution context is available */}
-        {(!isVelaarAdmin || selectedInstitutionId) && (
+        {(!isStatCapAdmin || selectedInstitutionId) && (
         <div className="glass-card" style={{ width: '100%', padding: '30px', boxSizing: 'border-box', marginBottom: '20px' }}>
           <div className="section-header">
             <span className="section-title">Invite Users to {currentUserData?.college_name || institutions.find(i => i.id === selectedInstitutionId)?.name || 'Your Institution'}</span>
@@ -614,8 +614,8 @@ export default function AdminDashboard() {
         </div>
         )}
 
-        {/* velaarAdmin: show prompt when no institution selected */}
-        {isVelaarAdmin && !selectedInstitutionId && (
+        {/* statcapAdmin: show prompt when no institution selected */}
+        {isStatCapAdmin && !selectedInstitutionId && (
           <div className="glass-card" style={{ width: '100%', padding: '40px', boxSizing: 'border-box', marginBottom: '20px', textAlign: 'center' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" style={{ margin: '0 auto 16px' }}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem' }}>Select an institution above to view its users and send invitations.</p>
@@ -742,7 +742,7 @@ export default function AdminDashboard() {
         <div className="charts-row">
           <div className="glass-card chart-container">
             <div className="section-header">
-              <span className="section-title">Monthly Velaar Cost</span>
+              <span className="section-title">Monthly StatCap Cost</span>
               <span className="section-unit">Γé╣ INR</span>
             </div>
             {monthlyData.length === 0 ? (
@@ -766,7 +766,7 @@ export default function AdminDashboard() {
 
           <div className="glass-card chart-container">
             <div className="section-header">
-              <span className="section-title">Monthly Velaar Calls</span>
+              <span className="section-title">Monthly StatCap Calls</span>
               <span className="section-unit">count</span>
             </div>
             {monthlyData.length === 0 ? (
@@ -796,7 +796,7 @@ export default function AdminDashboard() {
             <span className="section-unit">{teacherData.length} teachers</span>
           </div>
           {teacherData.length === 0 ? (
-            <div className="no-data-msg">No teacher data yet. Trigger some Velaar actions to see costs.</div>
+            <div className="no-data-msg">No teacher data yet. Trigger some StatCap actions to see costs.</div>
           ) : (
             <div className="scrollable-table-wrap">
               <table className="data-table" id="teacher-leaderboard-table">
@@ -805,7 +805,7 @@ export default function AdminDashboard() {
                     <th>#</th>
                     <th>Teacher</th>
                     <th>Subject / Course</th>
-                    <th>Velaar Calls</th>
+                    <th>StatCap Calls</th>
                     <th>Tokens In</th>
                     <th>Tokens Out</th>
                     <th>Total Cost</th>
@@ -909,10 +909,10 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* DETVelaarLED LOG TABLE */}
+        {/* DETStatCapLED LOG TABLE */}
         <div className="glass-card" style={{ width: '100%', minWidth: '100%', padding: '30px', boxSizing: 'border-box' }}>
           <div className="section-header">
-            <span className="section-title">Detailed Velaar Call Log</span>
+            <span className="section-title">Detailed StatCap Call Log</span>
             <span className="section-unit">{filteredLogs.length} records</span>
           </div>
           <div className="log-controls">
@@ -949,7 +949,7 @@ export default function AdminDashboard() {
           {filteredLogs.length === 0 ? (
             <div className="no-data-msg">
               {logs.length === 0
-                ? 'No Velaar calls logged yet. Every time a teacher uses an Velaar feature, it will appear here.'
+                ? 'No StatCap calls logged yet. Every time a teacher uses an StatCap feature, it will appear here.'
                 : 'No records match your search or filter.'}
             </div>
           ) : (
@@ -960,7 +960,7 @@ export default function AdminDashboard() {
                     <th>Timestamp</th>
                     <th>Teacher</th>
                     <th>Subject</th>
-                    <th>Velaar Action</th>
+                    <th>StatCap Action</th>
                     <th>Tokens In</th>
                     <th>Tokens Out</th>
                     <th>Cost (Γé╣)</th>

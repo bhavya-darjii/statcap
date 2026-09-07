@@ -29,7 +29,7 @@ export const generateNotice = async (req: Request, res: Response): Promise<void>
     Return ONLY valid JSON:
     {
       "title": "...",
-      "referenceNo": "VELAAR/2025/...",
+      "referenceNo": "STATCAP/2025/...",
       "body": "Full notice text with proper formatting",
       "audience": ["students", "teachers"],
       "hindiTranslation": "..."

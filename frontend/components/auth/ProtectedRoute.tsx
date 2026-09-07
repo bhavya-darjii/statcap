@@ -16,7 +16,7 @@ const ROLE_PATHS: Record<string, string> = {
   hod:            '/hod',
   registrar:      '/registrar',
   setup:          '/setup',
-  velaarAdmin:    '/velaar-admin',
+  statcapAdmin:    '/statcap-admin',
   examController: '/exam-controller',
   parent:         '/parent',
   teacher:        '/teacher',

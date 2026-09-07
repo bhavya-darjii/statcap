@@ -242,7 +242,7 @@ const TeacherHome = () => {
           <div className="empty-icon">📚</div>
           <h2>Welcome to your Digital Classroom!</h2>
           <p>It looks like you don't have any active courses yet. Let's get started by creating your very first course.</p>
-          <button className="velaar-btn" onClick={() => navigate('/teacher/create-course')}>
+          <button className="statcap-btn" onClick={() => navigate('/teacher/create-course')}>
             Create a Course
           </button>
         </div>

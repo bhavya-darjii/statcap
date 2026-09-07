@@ -20,7 +20,7 @@ const EFFECTIVE_COLUMN = {
 };
 
 // Draft key for localStorage — persists unsaved marks across tab switches
-const draftKey = (courseId, examId) => `velaar_marks_draft_${courseId}_${examId}`;
+const draftKey = (courseId, examId) => `statcap_marks_draft_${courseId}_${examId}`;
 
 // ─── Best-of-N logic ──────────────────────────────────────────────────────────
 const bestOfScores = (scores, parentQMarks, maxSubMarks) => {
@@ -342,7 +342,7 @@ const EditMarks = () => {
         <div className="glass-card" style={{ padding: 40, textAlign: 'center', borderRadius: 16, color: '#fff' }}>
           <h3 style={{ color: 'white', marginBottom: 10 }}>No Paper Pattern Found</h3>
           <p>Please go to the <strong>Question Papers</strong> tab and configure the paper pattern for {examTitle} before editing marks.</p>
-          <button className="velaar-btn" style={{ marginTop: 20 }} onClick={() => navigate(`/teacher/examination/${examId}`)}>Configure Pattern</button>
+          <button className="statcap-btn" style={{ marginTop: 20 }} onClick={() => navigate(`/teacher/examination/${examId}`)}>Configure Pattern</button>
         </div>
       ) : loadingMarks ? (
         <div className="glass-card" style={{ padding: 40, textAlign: 'center', borderRadius: 16, color: '#fff' }}>

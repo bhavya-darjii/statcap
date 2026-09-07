@@ -164,7 +164,7 @@ const EditMarks = () => {
         <div className="glass-card" style={{padding: '40px', textAlign: 'center', borderRadius: '16px', color: '#ffffff'}}>
           <h3 style={{color: 'white', marginBottom: '10px'}}>No Paper Pattern Found</h3>
           <p>Please go to the <strong>Question Papers</strong> tab and configure the paper pattern for {examTitle} before editing marks.</p>
-          <button className="velaar-btn" style={{marginTop: '20px'}} onClick={() => navigate(`/teacher/examination/${examId}`)}>Configure Pattern</button>
+          <button className="statcap-btn" style={{marginTop: '20px'}} onClick={() => navigate(`/teacher/examination/${examId}`)}>Configure Pattern</button>
         </div>
       ) : (
         <div className="marks-table-wrapper glass-card">

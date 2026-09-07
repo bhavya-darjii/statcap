@@ -1,9 +1,9 @@
 /* eslint-disable */
 // @ts-nocheck
 /**
- * VelaarAdminDashboard.jsx
- * Super Admin control panel for the Velaar platform.
- * Accessible only to users with user_type: 'velaarAdmin'.
+ * StatCapAdminDashboard.jsx
+ * Super Admin control panel for the StatCap platform.
+ * Accessible only to users with user_type: 'statcapAdmin'.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import AdminDashboardSkeleton from '../../components/skeletons/AdminDashboardSkeleton';
 import GlassSelect from '../../components/shared/GlassSelect';
-import './VelaarAdminDashboard.css';
+import './StatCapAdminDashboard.css';
 
 // ── Role badge helper ──────────────────────────────────────────────
 const ROLE_LABELS = {
@@ -25,7 +25,7 @@ const ROLE_LABELS = {
   admin:          'Institution Admin',
   student:        'Student',
   setup:          'Setup Pending',
-  velaarAdmin:    'Velaar Admin',
+  statcapAdmin:    'StatCap Admin',
   examController: 'Exam Controller',
   parent:         'Parent',
 };
@@ -87,12 +87,12 @@ const ROLE_COLORS = {
   registrar:      '#14b8a6',
   admin:          '#ef4444',
   setup:          '#f97316',
-  velaarAdmin:    '#ffffff',
+  statcapAdmin:    '#ffffff',
   examController: '#a855f7',
   parent:         '#22d3ee',
 };
 
-const VelaarAdminDashboard = () => {
+const StatCapAdminDashboard = () => {
   const navigate = useNavigate();
   const [users, setUsers]       = useState([]);
   const [courses, setCourses]   = useState([]);
@@ -136,7 +136,7 @@ const VelaarAdminDashboard = () => {
         setCourses((coursesData || []).map(d => ({ id: d.id, ...d })));
         setInstitutions((instsData || []).map(d => ({ id: d.id, ...d })));
       } catch (err) {
-        console.error('VelaarAdmin load error:', err);
+        console.error('StatCapAdmin load error:', err);
       }
       setLoading(false);
     };
@@ -356,7 +356,7 @@ const VelaarAdminDashboard = () => {
          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="va-header-left">
               <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>
-                Welcome to Velaar{currentUserData?.full_name ? `, ${currentUserData.full_name.split(' ')[0]}!` : '!'}
+                Welcome to StatCap{currentUserData?.full_name ? `, ${currentUserData.full_name.split(' ')[0]}!` : '!'}
               </h1>
               <p style={{ color: '#ffffff', fontSize: '1.05rem', margin: '5px 0 0 0' }}>
                 Global platform overview — {users.length} users across {colleges.filter(c => c.name !== 'Unassigned').length} institutions
@@ -503,7 +503,7 @@ const VelaarAdminDashboard = () => {
               {filteredUsers.map(u => {
                 const initial = (u.full_name || u.email || '?')[0].toUpperCase();
                 const isUpdating = updating === u.uid;
-                const canModify = u.uid !== currentUserId; // Don't let Velaar Admin modify themselves here easily
+                const canModify = u.uid !== currentUserId; // Don't let StatCap Admin modify themselves here easily
 
                 return (
                   <tr key={u.uid}>
@@ -800,4 +800,4 @@ const VelaarAdminDashboard = () => {
   );
 };
 
-export default VelaarAdminDashboard;
+export default StatCapAdminDashboard;

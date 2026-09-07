@@ -1,7 +1,7 @@
 /* eslint-disable */
 // @ts-nocheck
 /**
- * dataService.js — Centralized Data Layer for Velaar
+ * dataService.js — Centralized Data Layer for StatCap
  *
  * One source of truth. Every role (Teacher, HOD, Principal, Parent, Student)
  * reads attendance, marks, and risk from these functions.

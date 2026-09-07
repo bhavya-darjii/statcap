@@ -30,7 +30,7 @@ const HodLayout = () => {
   }, []);
 
   if (loading) {
-    return <div className="velaar-page-shell"><div className="skeleton-base" style={{ height: '32px', width: '280px', borderRadius: '8px', marginBottom: '8px' }} /></div>;
+    return <div className="statcap-page-shell"><div className="skeleton-base" style={{ height: '32px', width: '280px', borderRadius: '8px', marginBottom: '8px' }} /></div>;
   }
 
   return (

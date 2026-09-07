@@ -307,7 +307,7 @@ const ExamSection = ({ course }) => {
           placeholder="0 for Theory Only"
         />
         <p style={{ fontSize: '0.8rem', color: '#ffffff', opacity: 0.8, marginTop: '5px' }}>
-          {numericalCount > 0 ? `Velaar will generate ${numericalCount} numericals & ${numQuestions - numericalCount} theory questions.` : "Theory-only question bank will be generated."}
+          {numericalCount > 0 ? `StatCap will generate ${numericalCount} numericals & ${numQuestions - numericalCount} theory questions.` : "Theory-only question bank will be generated."}
         </p>
       </div>
 

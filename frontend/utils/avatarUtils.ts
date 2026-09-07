@@ -33,8 +33,8 @@ export const extractGoogleAvatarUrl = (user) => {
   return null;
 };
 
-const STORAGE_AVATAR_KEY = 'velaar_teacher_avatar';
-const STORAGE_PROFILE_KEY = 'velaar_teacher_profile';
+const STORAGE_AVATAR_KEY = 'statcap_teacher_avatar';
+const STORAGE_PROFILE_KEY = 'statcap_teacher_profile';
 
 /**
  * Get cached Google avatar from localStorage synchronously (0ms delay)
@@ -56,7 +56,7 @@ export const cacheTeacherAvatar = (url) => {
     const current = localStorage.getItem(STORAGE_AVATAR_KEY);
     if (current !== url) {
       localStorage.setItem(STORAGE_AVATAR_KEY, url);
-      window.dispatchEvent(new CustomEvent('velaar_avatar_changed', { detail: { avatarUrl: url } }));
+      window.dispatchEvent(new CustomEvent('statcap_avatar_changed', { detail: { avatarUrl: url } }));
     }
   } catch (err) {
     console.warn('Failed to cache avatar URL:', err);

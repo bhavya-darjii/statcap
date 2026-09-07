@@ -39,10 +39,9 @@ export const EXAM_CONTROLLER_NAV = [
 ];
 
 export const STATCAP_ADMIN_NAV = [
-  { path: '/velaar-admin', label: 'MoSPI National Hub' },
+  { path: '/statcap-admin', label: 'MoSPI National Hub' },
 ];
 
-export const VELAAR_ADMIN_NAV = STATCAP_ADMIN_NAV;
 
 export const DIRECTOR_NAV = [
   { path: '/principal', label: 'Director General' },
@@ -58,7 +57,7 @@ export const getNavForRole = (role) => {
     student: TRAINEE_NAV,
     registrar: REGISTRAR_NAV,
     examController: EXAM_CONTROLLER_NAV,
-    velaarAdmin: STATCAP_ADMIN_NAV,
+    statcapAdmin: STATCAP_ADMIN_NAV,
     principal: DIRECTOR_NAV,
   };
   return map[role] || [];

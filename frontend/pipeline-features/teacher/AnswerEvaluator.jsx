@@ -7,7 +7,7 @@ const AnswerEvaluator = () => {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>AI Answer Script Evaluator</h2>
-        <p>Upload scanned answer sheets — Velaar AI reads handwriting via OCR + vision, grades against your rubric, and pre-fills marks.</p>
+        <p>Upload scanned answer sheets — StatCap AI reads handwriting via OCR + vision, grades against your rubric, and pre-fills marks.</p>
       </div>
 
       <div className="glass-card" style={{ padding: '40px', marginTop: '20px', textAlign: 'center' }}>

@@ -12,7 +12,7 @@ const ROLE_REDIRECTS = {
   hod:            '/hod',
   registrar:      '/registrar',
   setup:          '/setup',
-  velaarAdmin:    '/velaar-admin',
+  statcapAdmin:    '/statcap-admin',
   examController: '/exam-controller',
   parent:         '/parent',
   student:        '/student',
@@ -123,7 +123,7 @@ const LoginPage = () => {
   return (
     <div className="login-container">
       <div className="login-card liquid-glass">
-        <h1 className="login-title">Velaar</h1>
+        <h1 className="login-title">StatCap</h1>
         <p className="login-subtitle">
           Sign in to your institutional portal
         </p>

@@ -100,12 +100,12 @@ const TeacherProfile = () => {
         setImgError(false);
       }
     };
-    window.addEventListener('velaar_avatar_changed', handleAvatarChange);
+    window.addEventListener('statcap_avatar_changed', handleAvatarChange);
 
     return () => {
       mounted = false;
       subscription?.unsubscribe();
-      window.removeEventListener('velaar_avatar_changed', handleAvatarChange);
+      window.removeEventListener('statcap_avatar_changed', handleAvatarChange);
     };
   }, []);
 

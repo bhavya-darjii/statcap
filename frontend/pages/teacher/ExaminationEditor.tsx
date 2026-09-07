@@ -467,7 +467,7 @@ const ExaminationEditor = () => {
             <p style={{color: '#ffffff', fontSize: '0.88rem', margin: 0, opacity: 0.85, lineHeight: '1.4'}}>
                {generationMode === 'bank' 
                   ? "Directly creating question papers from your previously generated Question Bank." 
-                  : "Drafting fresh conceptual exams with Velaar AI."}
+                  : "Drafting fresh conceptual exams with StatCap AI."}
             </p>
          </div>
          

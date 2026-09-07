@@ -79,10 +79,10 @@ async function fetchSchema() {
   }
 
   // Generate Markdown
-  let md = `# Velaar Database Schema 🗄️\n\n`;
+  let md = `# StatCap Database Schema 🗄️\n\n`;
   md += `> Automatically extracted from live Supabase instance (${supabaseUrl}) on **${new Date().toISOString()}**.\n\n`;
   md += `## Overview\n\n`;
-  md += `Velaar's persistence layer is built on PostgreSQL via Supabase. It features multi-tenant educational management with institution-level isolation, granular role-based access, automated attendance tracking, AI activity telemetry, course roadmaps, and examination analytics.\n\n`;
+  md += `StatCap's persistence layer is built on PostgreSQL via Supabase. It features multi-tenant educational management with institution-level isolation, granular role-based access, automated attendance tracking, AI activity telemetry, course roadmaps, and examination analytics.\n\n`;
   md += `- **Total Tables:** ${tables.length}\n`;
   md += `- **Total Foreign Key Relationships:** ${foreignKeys.length}\n\n`;
 

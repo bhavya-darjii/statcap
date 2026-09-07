@@ -1,10 +1,10 @@
-# Velaar Database Schema 🗄️
+# StatCap Database Schema 🗄️
 
 > Automatically extracted from live Supabase instance (https://lnxkmdulkhbfyxchjjdl.supabase.co) on **2026-09-07T06:19:56.034Z**.
 
 ## Overview
 
-Velaar's persistence layer is built on PostgreSQL via Supabase. It features multi-tenant educational management with institution-level isolation, granular role-based access, automated attendance tracking, AI activity telemetry, course roadmaps, and examination analytics.
+StatCap's persistence layer is built on PostgreSQL via Supabase. It features multi-tenant educational management with institution-level isolation, granular role-based access, automated attendance tracking, AI activity telemetry, course roadmaps, and examination analytics.
 
 - **Total Tables:** 12
 - **Total Foreign Key Relationships:** 16

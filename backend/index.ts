@@ -36,7 +36,7 @@ app.use(generalLimiter);
 
 // ─── Security: Restrict CORS to known origins only ───────────────────────────
 const ALLOWED_ORIGINS: string[] = [
-  'https://velaar.vercel.app',
+  'https://statcap.vercel.app',
   'http://localhost:5173',
   'https://localhost:5173',
   'http://localhost:5174',
@@ -104,7 +104,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 // Start server
 const PORT = process.env.PORT ?? 5000;
 app.listen(PORT, () => {
-  console.log(`\n🚀 [Backend] Velaar Express Server is running on http://localhost:${PORT}`);
+  console.log(`\n🚀 [Backend] StatCap Express Server is running on http://localhost:${PORT}`);
 });
 
 export default app;

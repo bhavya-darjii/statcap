@@ -24,7 +24,7 @@ const PendingPage = () => {
         </div>
         <h1 className="pending-title">Account Pending</h1>
         <p className="pending-subtitle">
-          Welcome to Velaar. Your account has been created successfully, but we are currently waiting for your institution to assign you a role and add you to their workspace.
+          Welcome to StatCap. Your account has been created successfully, but we are currently waiting for your institution to assign you a role and add you to their workspace.
         </p>
         <p className="pending-contact">
           Please contact your Institution Administrator or check back later.

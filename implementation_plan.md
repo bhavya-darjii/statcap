@@ -96,14 +96,14 @@ graph TD
 
 > [!IMPORTANT]
 > **Complete Decoupling Guarantee:**
-> The original project `c:\Users\Admin\velaar` and its database will **never be altered or affected**. `statcap-ai` will reside in a completely separate directory, with its own dedicated Git repository and its own fresh Supabase database instance.
+> The original project `c:\Users\Admin\statcap` and its database will **never be altered or affected**. `statcap-ai` will reside in a completely separate directory, with its own dedicated Git repository and its own fresh Supabase database instance.
 
 ### Step 1: Duplicate Codebase Cleanly using Robocopy
 Run these commands in Windows PowerShell:
 
 ```powershell
 # 1. Define paths
-$source = "c:\Users\Admin\velaar"
+$source = "c:\Users\Admin\statcap"
 $dest   = "c:\Users\Admin\statcap-ai"
 
 # 2. Fast copy excluding heavy node_modules, git, and build caches
@@ -121,7 +121,7 @@ git init
 git branch -M main
 
 # 2. Rebrand package.json to statcap-ai
-(Get-Content package.json) -replace '"name": "velaar"', '"name": "statcap-ai"' | Set-Content package.json
+(Get-Content package.json) -replace '"name": "statcap"', '"name": "statcap-ai"' | Set-Content package.json
 
 # 3. Clean install of dependencies (including ethers / crypto utilities)
 npm install
@@ -333,7 +333,7 @@ ON CONFLICT (course_id) DO NOTHING;
 
 ### A. Features to RETAIN & ADAPT for StatCap AI
 
-| Component / File Path | Current Velaar Function | Adaptation for StatCap AI (`SIH26101`) |
+| Component / File Path | Current StatCap Function | Adaptation for StatCap AI (`SIH26101`) |
 |---|---|---|
 | `frontend/services/pdfService.ts` & OCR | Extracts text from uploaded college syllabi | **MoSPI Training Manual Ingestion Engine:** Uploads NSSO field handbooks, survey guidelines, and National Accounts manuals (PDF/Images). |
 | `frontend/pages/teacher/ExaminationEditor.tsx` | Creates college exam papers | **AI Assessment & Quiz Generator:** Generates Bloom's-taxonomy MCQs from uploaded MoSPI documents with instant answers and explanations. |
@@ -346,7 +346,7 @@ ON CONFLICT (course_id) DO NOTHING;
 | `frontend/pages/teacher/TeacherDashboard.tsx` | Teacher portal | **NSSTA Instructor / Course Director Portal:** Course creation, manual upload, and cohort progress tracking. |
 | `frontend/pages/student/StudentDashboard.tsx` | Student portal | **Trainee Officer Dashboard:** Learning pathways, completed training hours, and skill gap cards. |
 | `frontend/pages/admin/AdminDashboard.tsx` | College Admin | **MoSPI Directorate Head Portal:** Directorate-wide competency metrics and training effectiveness. |
-| `frontend/pages/admin/VelaarAdminDashboard.tsx` | Super Admin | **MoSPI National Training Admin Hub:** Platform-wide oversight and capacity forecasting. |
+| `frontend/pages/admin/StatCapAdminDashboard.tsx` | Super Admin | **MoSPI National Training Admin Hub:** Platform-wide oversight and capacity forecasting. |
 | `frontend/pages/admin/RoleInvitations.tsx` | Invite college staff | **Cadre Onboarding Engine:** Batch-invite officers with pre-assigned Cadre (ISS/SSS/FOD). |
 
 ---
@@ -661,7 +661,7 @@ gantt
     Phase 7: GitHub Push & Vercel Deploy   : 2026-09-14, 1d
 ```
 
-* **Phase 1 (Setup & Decoupling):** Duplicate `c:\Users\Admin\velaar` to `c:\Users\Admin\statcap-ai` using robocopy; initialize fresh Git repository and update `package.json`.
+* **Phase 1 (Setup & Decoupling):** Duplicate `c:\Users\Admin\statcap` to `c:\Users\Admin\statcap-ai` using robocopy; initialize fresh Git repository and update `package.json`.
 * **Phase 2 (Database Migration):** Run the master SQL script on the new Supabase project (`statcap-db`) and configure `.env`.
 * **Phase 3 (Archive College Deadweight):** Move parent dashboard, QR attendance, college timetable, and lab manual files into `frontend/pipeline-features/archive/`.
 * **Phase 4 (Rebrand & Persona Navigation):** Update navigation labels from Teacher/Student to **Trainee Officer (ISS/SSS)**, **NSSTA Instructor**, and **Directorate Head (MoSPI)**; set primary color palette to deep sovereign blue/cyan.

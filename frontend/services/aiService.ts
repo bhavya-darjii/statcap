@@ -83,7 +83,7 @@ const aiPost = async (endpoint, body, options = {}) => {
   } catch (err) {
     if (err.name === 'AbortError') throw err;
     console.error(`Network error calling ${endpoint}:`, err);
-    return { error: 'Unable to reach Velaar server. Is the backend running on port 5000?' };
+    return { error: 'Unable to reach StatCap server. Is the backend running on port 5000?' };
   }
 
   let data;
@@ -343,7 +343,7 @@ export const sendCopilotMessage = async (messages, userRole, pagePath, pageLabel
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     console.error("Copilot Chat Error:", error);
-    return { error: "Failed to reach Velaar AI." };
+    return { error: "Failed to reach StatCap AI." };
   }
 };
 

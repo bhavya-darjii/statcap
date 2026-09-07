@@ -35,7 +35,7 @@ import AdminDashboardSkeleton from './components/skeletons/AdminDashboardSkeleto
 import HodDashboard from './pages/hod/HodDashboard';
 import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
 import SetupInstitutionPage from './pages/setup/SetupInstitutionPage';
-import VelaarAdminDashboard from './pages/admin/VelaarAdminDashboard';
+import StatCapAdminDashboard from './pages/admin/StatCapAdminDashboard';
 import ExamControllerDashboard from './pages/examcontroller/ExamControllerDashboard';
 import PrincipalDashboard from './pages/principal/PrincipalDashboard';
 import StudentDashboard from './pages/student/StudentDashboard';
@@ -147,7 +147,7 @@ function App() {
     if (userRole === 'hod')             return <Navigate to="/hod"             replace />;
     if (userRole === 'registrar')       return <Navigate to="/registrar"       replace />;
     if (userRole === 'setup')           return <Navigate to="/setup"           replace />;
-    if (userRole === 'velaarAdmin')     return <Navigate to="/velaar-admin"    replace />;
+    if (userRole === 'statcapAdmin')     return <Navigate to="/statcap-admin"    replace />;
     if (userRole === 'examController')  return <Navigate to="/exam-controller" replace />;
     if (userRole === 'principal')       return <Navigate to="/principal"       replace />;
     if (userRole === 'teacher')         return <Navigate to="/teacher"         replace />;
@@ -244,9 +244,9 @@ function App() {
                   </ProtectedRoute>
                 } />
 
-                <Route path="/velaar-admin" element={
-                  <ProtectedRoute allowedRoles={['velaarAdmin']}>
-                    <VelaarAdminDashboard />
+                <Route path="/statcap-admin" element={
+                  <ProtectedRoute allowedRoles={['statcapAdmin']}>
+                    <StatCapAdminDashboard />
                   </ProtectedRoute>
                 } />
 

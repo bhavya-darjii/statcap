@@ -24,7 +24,7 @@ import {
 import { saveAs } from "file-saver";
 import { useCopilotContext } from "../../context/CopilotContext";
 import { supabase } from "../../services/supabase";
-import "./VelaarCopilot.css";
+import "./StatCapCopilot.css";
 
 const QUICK_ACTIONS = [
   "Generate question bank",
@@ -153,7 +153,7 @@ const renderMarkdown = (text) => {
   });
 };
 
-const VelaarCopilot = ({ userRole = "teacher" }) => {
+const StatCapCopilot = ({ userRole = "teacher" }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { pageContext } = useCopilotContext();
@@ -498,7 +498,7 @@ const VelaarCopilot = ({ userRole = "teacher" }) => {
           <div className="copilot-v2__panel-header">
             <span className="copilot-v2__panel-title">
               <span className="copilot-v2__dot" />
-              Velaar
+              StatCap
             </span>
             <button
               type="button"
@@ -523,7 +523,7 @@ const VelaarCopilot = ({ userRole = "teacher" }) => {
                 </div>
               ) : (
                 <div key={i} className="copilot-v2__message copilot-v2__message--assistant">
-                  <span className="copilot-v2__sender copilot-v2__sender--velaar">Velaar</span>
+                  <span className="copilot-v2__sender copilot-v2__sender--statcap">StatCap</span>
                   <div className={`copilot-v2__reply copilot-v2__reply--${m.status || 'normal'}`}>
                     {m.status === 'error' && <span style={{marginRight: '6px'}}>&#9888;</span>}
                     {m.status === 'aborted' && <span style={{marginRight: '6px'}}>&#9888;</span>}
@@ -542,7 +542,7 @@ const VelaarCopilot = ({ userRole = "teacher" }) => {
             )}
             {isTyping && (
               <div className="copilot-v2__message copilot-v2__message--assistant">
-                <span className="copilot-v2__sender copilot-v2__sender--velaar">Velaar</span>
+                <span className="copilot-v2__sender copilot-v2__sender--statcap">StatCap</span>
                 <div className="copilot-v2__wave-dots">
                   <span /><span /><span />
                 </div>
@@ -635,5 +635,5 @@ const VelaarCopilot = ({ userRole = "teacher" }) => {
   );
 };
 
-export default VelaarCopilot;
+export default StatCapCopilot;
 

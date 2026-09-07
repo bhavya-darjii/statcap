@@ -7,7 +7,7 @@ import UnifiedLayout from './UnifiedLayout';
 const PrincipalLayout = () => (
   <UnifiedLayout
     title="Institution Overview"
-    subtitle="Principal · Velaar"
+    subtitle="Principal · StatCap"
     navItems={PRINCIPAL_NAV}
   >
     <Outlet />

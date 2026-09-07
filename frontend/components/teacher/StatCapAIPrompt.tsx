@@ -2,7 +2,7 @@
 // @ts-nocheck
 import React, { useState, useRef, useEffect } from 'react';
 import { sendCopilotMessage } from '../../services/aiService';
-import './VelaarAIPrompt.css';
+import './StatCapAIPrompt.css';
 
 const SUGGESTION_CHIPS = [
   "Show today's lectures?",
@@ -10,7 +10,7 @@ const SUGGESTION_CHIPS = [
   "Check attendance?"
 ];
 
-const VelaarAIPrompt = ({ className = '' }) => {
+const StatCapAIPrompt = ({ className = '' }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [input, setInput]         = useState('');
   const [isTyping, setIsTyping]   = useState(false);
@@ -44,7 +44,7 @@ const VelaarAIPrompt = ({ className = '' }) => {
     setInput('');
     const data = await sendCopilotMessage([userMessage]);
     setIsTyping(false);
-    setResponse(data.reply || 'Velaar AI encountered an anomaly.');
+    setResponse(data.reply || 'StatCap AI encountered an anomaly.');
   };
 
   const closeResponse = () => {
@@ -58,10 +58,10 @@ const VelaarAIPrompt = ({ className = '' }) => {
   };
 
   return (
-    <div ref={wrapperRef} className={`velaar-ai-wrapper ${isFocused ? 'focused' : ''} ${className}`}>
+    <div ref={wrapperRef} className={`statcap-ai-wrapper ${isFocused ? 'focused' : ''} ${className}`}>
 
       {/* Suggestion Chips */}
-      <div className="velaar-ai-chips">
+      <div className="statcap-ai-chips">
         {SUGGESTION_CHIPS.map((chip, idx) => (
           <button 
             key={idx} 
@@ -75,16 +75,16 @@ const VelaarAIPrompt = ({ className = '' }) => {
       </div>
 
       {/* Bubbly WWDC orbs */}
-      <div className="velaar-ai-orbs" aria-hidden="true">
+      <div className="statcap-ai-orbs" aria-hidden="true">
         <div className="vai-orb vai-orb-1" />
         <div className="vai-orb vai-orb-2" />
         <div className="vai-orb vai-orb-3" />
         <div className="vai-orb vai-orb-4" />
       </div>
 
-      <form className="velaar-ai-input-container" onSubmit={handleSend}>
+      <form className="statcap-ai-input-container" onSubmit={handleSend}>
         {/* Spark icon */}
-        <div className="velaar-ai-icon">
+        <div className="statcap-ai-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -94,7 +94,7 @@ const VelaarAIPrompt = ({ className = '' }) => {
         <input
           ref={inputRef}
           type="text"
-          className="velaar-ai-input"
+          className="statcap-ai-input"
           placeholder="Ask anything or search"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -104,7 +104,7 @@ const VelaarAIPrompt = ({ className = '' }) => {
         />
 
         {/* Send arrow — Always visible */}
-        <button type="submit" className="velaar-ai-send"
+        <button type="submit" className="statcap-ai-send"
           disabled={isTyping} aria-label="Send">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                stroke="currentColor" strokeWidth="2.5"
@@ -116,11 +116,11 @@ const VelaarAIPrompt = ({ className = '' }) => {
       </form>
 
       {(showResponse || isClosing) && (
-        <div className={`velaar-ai-response-panel ${showResponse && !isClosing ? 'visible' : 'closing'}`}>
+        <div className={`statcap-ai-response-panel ${showResponse && !isClosing ? 'visible' : 'closing'}`}>
           <div className="ai-response-header">
             <div className="ai-response-title">
               <span className="ai-response-title-dot" />
-              Velaar AI
+              StatCap AI
             </div>
             <button className="ai-close-btn" onClick={closeResponse} type="button" aria-label="Close">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
@@ -129,7 +129,7 @@ const VelaarAIPrompt = ({ className = '' }) => {
               </svg>
             </button>
           </div>
-          <div className="velaar-ai-response-content">
+          <div className="statcap-ai-response-content">
             {isTyping ? (
                <div className="liquid-typing">
                  <div className="liquid-dot" /><div className="liquid-dot" /><div className="liquid-dot" />
@@ -142,5 +142,5 @@ const VelaarAIPrompt = ({ className = '' }) => {
   );
 };
 
-export default VelaarAIPrompt;
+export default StatCapAIPrompt;
 

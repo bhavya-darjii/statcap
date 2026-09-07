@@ -2,7 +2,7 @@
 // @ts-nocheck
 import { getAllCoursePresentationHistory } from '../services/dataService';
 
-const STORAGE_PREFIX = 'velaar_pres_history_';
+const STORAGE_PREFIX = 'statcap_pres_history_';
 
 // In-memory cache for instantaneous 0ms synchronous access
 const memoryCache = new Map<string, Record<string, any[]>>();
@@ -72,7 +72,7 @@ export const cacheLecturePresentationHistory = (
   }
 
   window.dispatchEvent(
-    new CustomEvent('velaar_presentation_history_updated', {
+    new CustomEvent('statcap_presentation_history_updated', {
       detail: { courseId, division, lectureNum, history: courseMap[key] },
     })
   );
@@ -110,7 +110,7 @@ export const cacheFullCoursePresentationHistory = (
   }
 
   window.dispatchEvent(
-    new CustomEvent('velaar_presentation_history_updated', {
+    new CustomEvent('statcap_presentation_history_updated', {
       detail: { courseId, all: true },
     })
   );

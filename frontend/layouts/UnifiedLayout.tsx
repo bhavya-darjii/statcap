@@ -178,7 +178,7 @@ const UnifiedLayout = ({
       </nav>
 
       {/* Main Content Area */}
-      <div className="main-content velaar-page-shell">
+      <div className="main-content statcap-page-shell">
         <header className="dash-header">
           <div className="header-left">
             <button 

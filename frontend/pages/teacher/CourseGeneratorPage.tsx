@@ -9,7 +9,7 @@ import GlassSelect from "../../components/shared/GlassSelect";
 import SegmentedToggle from "../../components/shared/SegmentedToggle";
 import "./CourseGeneratorPage.css";
 
-const DRAFT_STORAGE_KEY = "velaar_course_generator_draft";
+const DRAFT_STORAGE_KEY = "statcap_course_generator_draft";
 
 // Global queue to ensure sequential PDF OCR extraction across all modules smoothly
 let pdfExtractionQueue = Promise.resolve();
@@ -814,7 +814,7 @@ const CourseGenerator = () => {
     }
 
     setLoading(true);
-    setLoadingStatus("Velaar AI is architecting your course roadmap...");
+    setLoadingStatus("StatCap AI is architecting your course roadmap...");
 
     // Build rich, structured syllabus context preserving every subtopic
     const aggregatedSyllabusText = modules
@@ -1038,7 +1038,7 @@ const CourseGenerator = () => {
 
               <h2 className="syllabus-hero-title">Auto-Architect Course from Syllabus</h2>
               <p className="syllabus-hero-subtitle">
-                Upload your official department syllabus PDF. Velaar AI extracts Course Code, Course Outcomes (COs), objectives, textbooks, credits, and structures all modules with curriculum topics.
+                Upload your official department syllabus PDF. StatCap AI extracts Course Code, Course Outcomes (COs), objectives, textbooks, credits, and structures all modules with curriculum topics.
               </p>
 
               {/* HIDDEN SYLLABUS PDF INPUT (ALWAYS IN DOM) */}
@@ -1111,7 +1111,7 @@ const CourseGenerator = () => {
                     <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
                   </svg>
                   <h3 style={{ color: "#ffffff", margin: "0 0 6px 0", fontSize: "1.1rem" }}>Extracting Text from PDF...</h3>
-                  <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", margin: 0 }}>Reading structural document contents via Velaar PDF engine.</p>
+                  <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", margin: 0 }}>Reading structural document contents via StatCap PDF engine.</p>
                 </div>
               )}
 
@@ -1120,7 +1120,7 @@ const CourseGenerator = () => {
                 <div className={`syllabus-processing-card parsing-card${parseFadingOut ? " parsing-card--fading" : ""}`}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                     <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#ffffff", letterSpacing: "0.01em" }}>
-                      {parseCompleted || parseFadingOut ? "Syllabus Parsed Successfully!" : "Velaar AI is Parsing Your Syllabus..."}
+                      {parseCompleted || parseFadingOut ? "Syllabus Parsed Successfully!" : "StatCap AI is Parsing Your Syllabus..."}
                     </span>
                     <span className="ppt-progress-panel__timer">
                       {formatTime(parseTimer)}
@@ -1808,7 +1808,7 @@ const CourseGenerator = () => {
                 disabled={loading}
                 style={{ gridColumn: "1 / -1", marginTop: "20px", padding: "16px 28px", fontSize: "1.05rem", width: "100%", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
               >
-                {loading ? "Velaar AI is Generating Roadmap..." : "Generate Lecture Roadmap"}
+                {loading ? "StatCap AI is Generating Roadmap..." : "Generate Lecture Roadmap"}
               </button>
             </div>
           )}

@@ -1,5 +1,5 @@
 /* =========================================
-   VELAAR ADMIN DASHBOARD
+   STATCAP ADMIN DASHBOARD
    Global Super Admin Control Center
    ========================================= */
 
@@ -378,7 +378,7 @@
 .va-badge--admin        { background: rgba(239,68,68,0.12);   color: #fca5a5; border: 1px solid rgba(239,68,68,0.2);  }
 .va-badge--student      { background: rgba(255,255,255,0.06); color: #ffffff; border: 1px solid rgba(255,255,255,0.1); }
 .va-badge--setup        { background: rgba(251,146,60,0.12);  color: #fdba74; border: 1px solid rgba(251,146,60,0.2); }
-.va-badge--velaarAdmin  { background: rgba(255,255,255,0.15); color: #ffffff; border: 1px solid rgba(255,255,255,0.3); }
+.va-badge--statcapAdmin  { background: rgba(255,255,255,0.15); color: #ffffff; border: 1px solid rgba(255,255,255,0.3); }
 .va-badge--examController { background: rgba(168,85,247,0.12); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.25); }
 .va-badge--parent       { background: rgba(34,211,238,0.12);  color: #67e8f9; border: 1px solid rgba(34,211,238,0.25); }
 

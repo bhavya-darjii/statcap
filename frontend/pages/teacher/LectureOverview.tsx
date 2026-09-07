@@ -72,8 +72,8 @@ const LectureCard = ({ course, lecture, globalGenerating, setGlobalGenerating })
       }
     };
 
-    window.addEventListener('velaar_presentation_history_updated', handleUpdate);
-    return () => window.removeEventListener('velaar_presentation_history_updated', handleUpdate);
+    window.addEventListener('statcap_presentation_history_updated', handleUpdate);
+    return () => window.removeEventListener('statcap_presentation_history_updated', handleUpdate);
   }, [course?.id, lectureDiv, lectureNum]);
 
   // Timer + before-unload guard
@@ -350,7 +350,7 @@ const LectureOverview = () => {
     return (
       <div className="lecture-empty glass-card">
         <h2>Create a course before preparing a lecture</h2>
-        <p>Velaar uses your syllabus and roadmap to ground each lecture preparation.</p>
+        <p>StatCap uses your syllabus and roadmap to ground each lecture preparation.</p>
       </div>
     );
   }

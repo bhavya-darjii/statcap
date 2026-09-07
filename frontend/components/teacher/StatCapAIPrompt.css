@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════
-   VELAAR AI — Payrix-inspired Liquid Glass Prompt
+   STATCAP AI — Payrix-inspired Liquid Glass Prompt
    ══════════════════════════════════════════════════════════════ */
 
 :root {
@@ -10,7 +10,7 @@
 }
 
 /* ── Outer wrapper ─────────────────────────────────────────── */
-.velaar-ai-wrapper {
+.statcap-ai-wrapper {
   position: relative;
   width: 100%;
   max-width: 560px;
@@ -23,12 +23,12 @@
   margin: 0 auto;
 }
 
-.velaar-ai-wrapper.focused {
+.statcap-ai-wrapper.focused {
   max-width: 680px;
 }
 
 /* ── Suggestion Chips ──────────────────────────────────────── */
-.velaar-ai-chips {
+.statcap-ai-chips {
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -38,7 +38,7 @@
   transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.velaar-ai-wrapper.focused .velaar-ai-chips {
+.statcap-ai-wrapper.focused .statcap-ai-chips {
   opacity: 1;
   transform: translateY(-4px);
 }
@@ -73,7 +73,7 @@
 }
 
 /* ── Floating bubble orbs ──────────────────────────────────── */
-.velaar-ai-orbs {
+.statcap-ai-orbs {
   position: absolute;
   inset: -40px;
   pointer-events: none;
@@ -81,7 +81,7 @@
   transition: opacity 1s ease;
   z-index: -1;
 }
-.velaar-ai-wrapper.focused .velaar-ai-orbs { opacity: 1; }
+.statcap-ai-wrapper.focused .statcap-ai-orbs { opacity: 1; }
 
 .vai-orb {
   position: absolute;
@@ -100,7 +100,7 @@
 @keyframes orbFloat4 { 0%,100%{transform:translate(0,0) scale(1)} 45%{transform:translate(20px,-8px) scale(1.08)} }
 
 /* ── The glassmorphic pill bar ─────────────────────────────── */
-.velaar-ai-input-container {
+.statcap-ai-input-container {
   display: flex;
   align-items: center;
   position: relative;
@@ -126,7 +126,7 @@
   overflow: visible;
 }
 
-.velaar-ai-wrapper.focused .velaar-ai-input-container {
+.statcap-ai-wrapper.focused .statcap-ai-input-container {
   background: rgba(255, 255, 255, 0.65);
   border-color: rgba(10, 143, 168, 0.55);
   box-shadow:
@@ -137,7 +137,7 @@
 }
 
 /* shimmer sweep on focus */
-.velaar-ai-input-container::after {
+.statcap-ai-input-container::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -148,7 +148,7 @@
   pointer-events: none;
   opacity: 0;
 }
-.velaar-ai-wrapper.focused .velaar-ai-input-container::after {
+.statcap-ai-wrapper.focused .statcap-ai-input-container::after {
   animation: shimmerOnce 0.75s cubic-bezier(0.4,0,0.2,1) 0.05s forwards;
 }
 @keyframes shimmerOnce {
@@ -157,21 +157,21 @@
 }
 
 /* ── Spark icon (simple, no stacked layers) ──────────────── */
-.velaar-ai-icon {
+.statcap-ai-icon {
   display: flex;
   align-items: center;
   color: var(--text-secondary);
   flex-shrink: 0;
   transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
 }
-.velaar-ai-wrapper.focused .velaar-ai-icon {
+.statcap-ai-wrapper.focused .statcap-ai-icon {
   color: var(--vai-indigo);
   filter: drop-shadow(0 0 4px rgba(10, 143, 168, 0.4));
   transform: scale(1.1) rotate(-10deg);
 }
 
 /* ── Input field ─────────────────────────────────────────── */
-.velaar-ai-input {
+.statcap-ai-input {
   flex: 1;
   height: 100%;
   background: transparent;
@@ -185,16 +185,16 @@
   caret-color: var(--vai-indigo);
   min-width: 0;
 }
-.velaar-ai-input::placeholder {
+.statcap-ai-input::placeholder {
   color: var(--text-muted);
   font-weight: 500;
 }
-.velaar-ai-wrapper.focused .velaar-ai-input::placeholder {
+.statcap-ai-wrapper.focused .statcap-ai-input::placeholder {
   color: var(--text-secondary);
 }
 
 /* ── Send button — always visible on right ─── */
-.velaar-ai-send {
+.statcap-ai-send {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,13 +210,13 @@
   padding: 0 !important;
   margin-left: 5px;
 }
-.velaar-ai-send:not(:disabled):hover {
+.statcap-ai-send:not(:disabled):hover {
   color: #fff;
   background: var(--vai-indigo) !important;
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(10, 143, 168, 0.3);
 }
-.velaar-ai-send:disabled {
+.statcap-ai-send:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -224,7 +224,7 @@
 /* ════════════════════════════════════════════════════════════
    RESPONSE PANEL
    ════════════════════════════════════════════════════════════ */
-.velaar-ai-response-panel {
+.statcap-ai-response-panel {
   position: absolute;
   bottom: calc(100% + 20px);
   left: 0;
@@ -249,12 +249,12 @@
   transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1);
 }
 
-.velaar-ai-response-panel.visible {
+.statcap-ai-response-panel.visible {
   opacity: 1;
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }
-.velaar-ai-response-panel.closing {
+.statcap-ai-response-panel.closing {
   opacity: 0;
   transform: translateY(8px) scale(0.98);
   pointer-events: none;
@@ -306,7 +306,7 @@
   color: var(--text-primary) !important;
 }
 
-.velaar-ai-response-content {
+.statcap-ai-response-content {
   font-size: 0.95rem;
   line-height: 1.6;
   color: var(--text-primary);
@@ -314,12 +314,12 @@
   max-height: 260px;
   overflow-y: auto;
 }
-.velaar-ai-response-content::-webkit-scrollbar { width: 4px; }
-.velaar-ai-response-content::-webkit-scrollbar-thumb {
+.statcap-ai-response-content::-webkit-scrollbar { width: 4px; }
+.statcap-ai-response-content::-webkit-scrollbar-thumb {
   background: rgba(14, 100, 140, 0.2);
   border-radius: 4px;
 }
-.velaar-ai-response-content p { margin: 0; }
+.statcap-ai-response-content p { margin: 0; }
 
 /* ── Typing dots ─────────────────────────────────────────── */
 .liquid-typing {

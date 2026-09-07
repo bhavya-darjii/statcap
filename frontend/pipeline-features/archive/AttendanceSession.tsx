@@ -336,7 +336,7 @@ const AttendanceSession = () => {
                 <h2 style={{ fontSize: '1.8rem', margin: 0 }}>Defaulters List</h2>
                 <p className="subtitle" style={{ margin: 0, marginTop: '5px' }}>Total Sessions Conducted: <strong>{totalSessions}</strong></p>
               </div>
-              <button className="velaar-btn" onClick={handlePrint} disabled={analyticsLoading || totalSessions === 0}>
+              <button className="statcap-btn" onClick={handlePrint} disabled={analyticsLoading || totalSessions === 0}>
                 Export PDF
               </button>
             </div>
