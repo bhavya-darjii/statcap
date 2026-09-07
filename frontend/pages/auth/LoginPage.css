@@ -1,0 +1,256 @@
+/* src/pages/auth/LoginPage.css */
+
+.login-container {
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* Glass Login Card */
+.liquid-glass {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto; /* horizontal centering */
+  background: rgba(10, 10, 15, 0.35);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  padding: 30px 40px 50px 40px;
+  border-radius: 32px;
+  text-align: center;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* Brand Header */
+.login-title {
+  font-size: 3.5rem;
+  font-weight: 900;
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: -2px;
+}
+
+.login-subtitle {
+  color: #ffffff;
+  font-size: 1rem;
+  margin-bottom: 40px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* SSO Buttons Container */
+.sso-buttons-container {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  width: 100%;
+}
+
+/* Email Login Form */
+.email-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.liquid-input {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.liquid-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.liquid-input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.primary-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2) !important;
+}
+
+.primary-btn:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.toggle-auth-mode {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.toggle-auth-mode span:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.divider span {
+  padding: 0 10px;
+}
+
+/* Liquid Button Styling */
+.liquid-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 18px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.liquid-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sso-btn {
+  flex: 1;
+  padding: 12px;
+  gap: 8px;
+  font-size: 0.75rem !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff !important;
+}
+
+.loading-indicator {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  font-size: 0.9rem;
+  color: var(--accent-teal);
+  font-weight: 600;
+  animation: pulse 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* Liquid Error Handling */
+.liquid-error {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 14px 18px;
+  border-radius: 14px;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  animation: shake 0.4s ease-in-out;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%, 75% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+}
+
+@media screen and (max-width: 480px) {
+  .login-container {
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+
+  .liquid-glass {
+    width: 100%;
+    max-width: 100%;
+    background: rgba(10, 10, 15, 0.35);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    padding: 24px 20px 28px; /* tighter vertical padding */
+    border-radius: 24px;
+  }
+
+  .login-title { font-size: 2.4rem; margin-bottom: 4px; }
+
+  .login-subtitle { 
+    font-size: 0.9rem;
+    margin-bottom: 20px; /* was 30px */
+  }
+
+  .email-login-form {
+    gap: 12px; /* was 16px */
+    margin-bottom: 14px; /* was 20px */
+  }
+
+  .liquid-input {
+    padding: 13px 16px; /* was 16px 20px */
+  }
+
+  .divider {
+    margin-bottom: 14px; /* was 20px */
+  }
+
+  .sso-btn {
+    padding: 10px 8px;
+    font-size: 0.7rem !important;
+  }
+}

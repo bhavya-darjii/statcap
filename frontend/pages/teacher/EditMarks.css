@@ -1,0 +1,206 @@
+.edit-marks-container {
+  padding: 20px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.edit-marks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 30px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border-left: 5px solid #ea580c;
+}
+
+.edit-marks-header h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: #fff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.save-btn {
+  background: #ffffff;
+  color: #000000;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #000000;
+  transform: translateY(-2px);
+}
+
+.save-btn:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  cursor: not-allowed;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.marks-table-wrapper {
+  overflow-x: auto;
+  padding: 20px;
+  border-radius: 16px;
+}
+
+.marks-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #fff;
+}
+
+.marks-table th,
+.marks-table td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.marks-table th {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.test-title {
+  font-size: 1.2rem;
+  padding: 15px !important;
+  background: rgba(234, 88, 12, 0.1) !important;
+}
+
+.mark-input {
+  width: 45px !important;
+  min-width: 45px !important;
+  height: 32px !important;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 15px !important;
+  font-weight: bold !important;
+  padding: 0 4px !important;
+  border-radius: 6px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.mark-input:focus {
+  border-color: #ea580c;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.mark-input--over,
+.mark-input--over:focus {
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.35) !important;
+  box-shadow: 0 0 0 1px #ef4444 !important;
+}
+
+/* ─── Toast Notification ─────────────────────────────────────────────────── */
+.em-toast {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 14px 16px;
+  border-radius: 20px;
+  background: rgba(12, 12, 18, 0.45);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  max-width: 380px;
+  animation: em-toast-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.em-toast--success {
+  border: 1px solid rgba(74, 222, 128, 0.18);
+}
+
+.em-toast--error {
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+
+/* Colored glowing dot on the left */
+.em-toast__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.em-toast--success .em-toast__dot {
+  background: #4ade80;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.8);
+}
+
+.em-toast--error .em-toast__dot {
+  background: #ef4444;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+.em-toast__msg {
+  flex: 1;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Subtle × close button — no border, no background, very dim */
+.em-toast__close {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 2px;
+  transition: color 0.2s ease;
+}
+
+.em-toast__close:hover {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+@keyframes em-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
