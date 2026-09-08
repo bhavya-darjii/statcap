@@ -28,9 +28,11 @@ dist-ssr
 .vercel
 .env*.local
 *.key
-*key*
-*secret*
-*credential*
+*.pem
+*serviceAccountKey*.json
+*credentials*.json
+credentials.json
+client_secret*.json
 docs/DEMO_CREDENTIALS.md
 API Keys
 server/serviceAccountKey.json
@@ -45,3 +47,7 @@ docs/*
 
 # Compiled backend output 
 dist-backend/
+
+# Blockchain build output
+blockchain/artifacts/
+blockchain/cache/
