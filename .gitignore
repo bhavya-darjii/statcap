@@ -30,6 +30,8 @@ dist-ssr
 *.key
 *key*
 *secret*
+*credential*
+docs/DEMO_CREDENTIALS.md
 API Keys
 server/serviceAccountKey.json
 backend/scripts/*

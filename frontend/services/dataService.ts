@@ -119,7 +119,7 @@ export const getStudentMarksFromCourse = (course, studentId) => {
  */
 export const getStudentsForCourse = async (course) => {
   if (!course) return [];
-  let q = supabase.from('users').select('id, full_name, email').eq('user_type', 'student');
+  let q = supabase.from('users').select('id, full_name, email').in('user_type', ['trainee', 'student']);
   if (course.institution_id) q = q.eq('institution_id', course.institution_id);
   if (course.semester) q = q.eq('semester', course.semester);
   const { data } = await q;
@@ -201,8 +201,8 @@ export const getDepartmentSummary = async (department, institutionId) => {
   const allCourses = courses || [];
   const allUsers = users || [];
 
-  const teachers = allUsers.filter((u) => u.user_type === 'teacher');
-  const students = allUsers.filter((u) => u.user_type === 'student');
+  const teachers = allUsers.filter((u) => u.user_type === 'instructor' || u.user_type === 'teacher');
+  const students = allUsers.filter((u) => u.user_type === 'trainee' || u.user_type === 'student');
   const courseIds = allCourses.map((c) => c.id);
 
   const [{ data: sessions }, { data: logs }] = await Promise.all([

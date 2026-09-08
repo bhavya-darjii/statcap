@@ -21,7 +21,7 @@
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  padding: 30px 40px 50px 40px;
+  padding: 38px 36px 40px;
   border-radius: 32px;
   text-align: center;
   color: #ffffff;
@@ -33,27 +33,20 @@
 
 /* Brand Header */
 .login-title {
-  font-size: 3.5rem;
+  font-size: 3.2rem;
   font-weight: 900;
-  margin: 0;
+  margin: 0 0 6px 0;
+  line-height: 1.08;
   color: #ffffff;
-  letter-spacing: -2px;
+  letter-spacing: -1.5px;
 }
 
 .login-subtitle {
-  color: #ffffff;
-  font-size: 1rem;
-  margin-bottom: 40px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.95rem;
+  margin: 0 0 28px 0;
   font-weight: 500;
-  line-height: 1.5;
-}
-
-/* SSO Buttons Container */
-.sso-buttons-container {
-  display: flex;
-  flex-direction: row;
-  gap: 16px;
-  width: 100%;
+  line-height: 1.3;
 }
 
 /* Email Login Form */
@@ -62,7 +55,7 @@
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .liquid-input {
@@ -89,15 +82,48 @@
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
+.liquid-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: none;
+  background-color: #ffffff;
+  color: #000000;
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  margin-top: 8px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.liquid-btn:hover {
+  background-color: #f1f5f9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+}
+
+.liquid-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .primary-btn {
   background-color: #ffffff !important;
   color: #000000 !important;
   border: none !important;
+  height: 52px !important;
+  min-height: 52px !important;
   box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2) !important;
-}
-
-.primary-btn:hover {
-  background-color: #e2e8f0 !important;
 }
 
 .toggle-auth-mode {
@@ -112,66 +138,7 @@
   text-decoration: underline;
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  text-align: center;
-  width: 100%;
-  margin-bottom: 20px;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
 
-.divider::before, .divider::after {
-  content: '';
-  flex: 1;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.divider span {
-  padding: 0 10px;
-}
-
-/* Liquid Button Styling */
-.liquid-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  width: 100%;
-  padding: 16px 24px;
-  border-radius: 18px;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.liquid-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.sso-btn {
-  flex: 1;
-  padding: 12px;
-  gap: 8px;
-  font-size: 0.75rem !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: #ffffff !important;
-}
 
 .loading-indicator {
   position: absolute;
@@ -237,20 +204,11 @@
   }
 
   .email-login-form {
-    gap: 12px; /* was 16px */
-    margin-bottom: 14px; /* was 20px */
+    gap: 12px;
+    margin-bottom: 0;
   }
 
   .liquid-input {
-    padding: 13px 16px; /* was 16px 20px */
-  }
-
-  .divider {
-    margin-bottom: 14px; /* was 20px */
-  }
-
-  .sso-btn {
-    padding: 10px 8px;
-    font-size: 0.7rem !important;
+    padding: 13px 16px;
   }
 }

@@ -9,10 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "type-check": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.backend.json --noEmit",
-    "preview": "vite preview",
-    "set-demo-passwords": "npx tsx backend/scripts/set-demo-passwords.ts",
-    "remove-demo-passwords": "npx tsx backend/scripts/remove-demo-passwords.ts",
-    "fetch-schema": "npx tsx backend/scripts/fetch-schema.ts"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@google/genai": "^1.52.0",
@@ -22,6 +19,7 @@
     "docx": "^9.6.1",
     "docxtemplater": "^3.68.3",
     "dotenv": "^17.3.1",
+    "ethers": "^6.17.0",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "file-saver": "^2.0.5",

@@ -1,7 +1,7 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 // @ts-nocheck
 import './SkeletonLoader.css';
-import '../../pages/admin/AdminDashboard.css';
+import '../../pages/directorate/DirectorateDashboard.css';
 
 /**
  * AdminDashboardSkeleton

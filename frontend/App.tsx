@@ -7,43 +7,43 @@ import { supabase } from './services/supabase';
 import MeshBackground from './components/shared/MeshBackground';
 import GlobalCopilot from './components/shared/GlobalCopilot';
 import { CopilotProvider } from './context/CopilotContext';
-import FullLayoutSkeleton from './components/skeletons/FullLayoutSkeleton';
 import AuthLoadingScreen from './components/shared/AuthLoadingScreen';
 import { extractGoogleAvatarUrl, cacheTeacherAvatar } from './utils/avatarUtils';
 
 import LoginPage from './pages/auth/LoginPage';
-import TeacherLayout from './layouts/TeacherLayout';
-import AdminLayout from './layouts/AdminLayout';
-import StudentLayout from './layouts/StudentLayout';
-import HodLayout from './layouts/HodLayout';
-import PrincipalLayout from './layouts/PrincipalLayout';
-import TeacherHome from './pages/teacher/TeacherHome';
-import LessonPlanPage from './pages/teacher/LessonPlanPage';
-import QuestionBankPage from './pages/teacher/QuestionBankPage';
-import ExaminationPage from './pages/teacher/ExaminationPage';
-import ExaminationEditor from './pages/teacher/ExaminationEditor';
-import CourseGeneratorPage from './pages/teacher/CourseGeneratorPage';
-import LectureOverview from './pages/teacher/LectureOverview';
-import CourseAnalytics from './pages/teacher/CourseAnalytics';
-import TeacherProfile from './pages/teacher/TeacherProfile';
-import MarksDashboard from './pages/teacher/MarksDashboard';
-import EditMarks from './pages/teacher/EditMarks';
-import StudentAnalytics from './pages/teacher/StudentAnalytics';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminDashboardSkeleton from './components/skeletons/AdminDashboardSkeleton';
-import HodDashboard from './pages/hod/HodDashboard';
-import RegistrarDashboard from './pages/registrar/RegistrarDashboard';
-import SetupInstitutionPage from './pages/setup/SetupInstitutionPage';
-import StatCapAdminDashboard from './pages/admin/StatCapAdminDashboard';
-import ExamControllerDashboard from './pages/examcontroller/ExamControllerDashboard';
-import PrincipalDashboard from './pages/principal/PrincipalDashboard';
-import StudentDashboard from './pages/student/StudentDashboard';
-import LectureVault from './pages/student/LectureVault';
-import PendingPage from './pages/auth/PendingPage';
-import PendingPageSkeleton from './components/skeletons/PendingPageSkeleton';
-import StudentDashboardSkeleton from './components/skeletons/StudentDashboardSkeleton';
+import TraineeDashboardSkeleton from './components/skeletons/TraineeDashboardSkeleton';
 import NotFoundPage from './pages/shared/NotFoundPage';
+
+// ── Layouts ──────────────────────────────────────────────────────────────────
+import TraineeLayout from './layouts/TraineeLayout';
+import InstructorLayout from './layouts/InstructorLayout';
+import DirectorateLayout from './layouts/DirectorateLayout';
+
+// ── Trainee pages ─────────────────────────────────────────────────────────────
+import TraineeDashboard from './pages/trainee/TraineeDashboard';
+import LectureVault from './pages/trainee/LectureVault';
+import TraineeCredentialsPage from './pages/trainee/TraineeCredentialsPage';
+
+// ── Instructor pages ──────────────────────────────────────────────────────────
+import InstructorHome from './pages/instructor/InstructorHome';
+import LessonPlanPage from './pages/instructor/LessonPlanPage';
+import QuestionBankPage from './pages/instructor/QuestionBankPage';
+import ExaminationPage from './pages/instructor/ExaminationPage';
+import ExaminationEditor from './pages/instructor/ExaminationEditor';
+import CourseGeneratorPage from './pages/instructor/CourseGeneratorPage';
+import LectureOverview from './pages/instructor/LectureOverview';
+import CourseAnalytics from './pages/instructor/CourseAnalytics';
+import InstructorProfile from './pages/instructor/InstructorProfile';
+import MarksDashboard from './pages/instructor/MarksDashboard';
+import EditMarks from './pages/instructor/EditMarks';
+import TraineeAnalytics from './pages/instructor/TraineeAnalytics';
+
+// ── Directorate pages ─────────────────────────────────────────────────────────
+import DirectorateDashboard from './pages/directorate/DirectorateDashboard';
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+import PendingPage from './pages/auth/PendingPage';
 
 function App() {
   const [authResolved, setAuthResolved] = useState(false);
@@ -63,96 +63,59 @@ function App() {
         }
         return;
       }
-      
+
       const user = session.user;
-
-      // Pre-cache Google account avatar so all teacher/faculty views have 0ms load time
       const gAvatar = extractGoogleAvatarUrl(user);
-      if (gAvatar) {
-        cacheTeacherAvatar(gAvatar);
-      }
+      if (gAvatar) cacheTeacherAvatar(gAvatar);
 
+      let docRole: string | undefined;
       try {
-        const { data: userData, error } = await supabase
+        const { data: userData } = await supabase
           .from('users')
           .select('user_type')
           .eq('id', user.id)
           .single();
+        if (userData?.user_type) docRole = userData.user_type;
+      } catch (e) { /* fallback */ }
 
-        let role = userData ? (userData.user_type || 'pending') : 'pending';
-
-        if (role === 'pending' && user.email) {
-          const { data: inviteData } = await supabase
-            .from('role_invitations')
-            .select('*')
-            .eq('email', user.email.toLowerCase())
-            .single();
-
-          if (inviteData) {
-            role = inviteData.user_type || 'pending';
-            const updatePayload = {
-              user_type: role,
-              institution_id: inviteData.institution_id || null,
-              college_name: inviteData.college_name || null,
-            };
-            if (inviteData.semester) updatePayload.semester = inviteData.semester;
-            if (inviteData.division) updatePayload.division = String(inviteData.division).trim().toUpperCase();
-
-            await supabase.from('users').update(updatePayload).eq('id', user.id);
-            await supabase.from('role_invitations').delete().eq('email', user.email.toLowerCase());
-            
-            window.location.href = '/';
-            return;
-          }
-        }
-
-        if (mounted) {
-          setInitialUser(user);
-          setUserRole(role);
-          localStorage.setItem('cachedUserRole', role);
-        }
-      } catch (e) {
-        console.error('Offline or error fetching role', e);
-        if (mounted) {
-          const cachedRole = localStorage.getItem('cachedUserRole') || 'teacher';
-          setInitialUser(user);
-          setUserRole(cachedRole);
-        }
+      let role = 'trainee';
+      if (docRole && docRole !== 'pending') {
+        role = docRole;
+      } else if (user.user_metadata?.user_type) {
+        role = user.user_metadata.user_type;
+      } else if (user.user_metadata?.role) {
+        role = user.user_metadata.role;
+      } else {
+        const email = (user.email || '').toLowerCase();
+        if (email.includes('director') || email.includes('admin')) role = 'director';
+        else if (email.includes('instructor') || email.includes('teacher') || email.includes('nssta')) role = 'instructor';
+        else role = localStorage.getItem('cachedUserRole') || 'trainee';
       }
-      
-      if (mounted) setAuthResolved(true);
+
+      if (mounted) {
+        setInitialUser(user);
+        setUserRole(role);
+        localStorage.setItem('cachedUserRole', role);
+        setAuthResolved(true);
+      }
     };
 
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      checkUser(session);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => checkUser(session));
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       checkUser(session);
     });
 
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
+    return () => { mounted = false; subscription?.unsubscribe(); };
   }, []);
 
   const RootRedirect = () => {
     if (!initialUser) return <LoginPage />;
     if (!userRole) return <AuthLoadingScreen />;
-    if (userRole === 'admin')           return <Navigate to="/admin"           replace />;
-    if (userRole === 'student')         return <Navigate to="/student"         replace />;
-    if (userRole === 'hod')             return <Navigate to="/hod"             replace />;
-    if (userRole === 'registrar')       return <Navigate to="/registrar"       replace />;
-    if (userRole === 'setup')           return <Navigate to="/setup"           replace />;
-    if (userRole === 'statcapAdmin')     return <Navigate to="/statcap-admin"    replace />;
-    if (userRole === 'examController')  return <Navigate to="/exam-controller" replace />;
-    if (userRole === 'principal')       return <Navigate to="/principal"       replace />;
-    if (userRole === 'teacher')         return <Navigate to="/teacher"         replace />;
-    if (userRole === 'pending')         return <Navigate to="/pending"         replace />;
-    return <Navigate to="/pending" replace />;
+    const role = userRole.toLowerCase();
+    if (role === 'director' || role === 'admin') return <Navigate to="/directorate" replace />;
+    if (role === 'instructor' || role === 'teacher') return <Navigate to="/instructor" replace />;
+    return <Navigate to="/trainee" replace />;
   };
 
   return (
@@ -169,58 +132,25 @@ function App() {
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<RootRedirect />} />
 
-                {/* Admin nested routes */}
-                <Route path="/admin" element={
-                  <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminLayout />
+                {/* ── Trainee Officer (ISS / SSS / FOD) ── */}
+                <Route path="/trainee" element={
+                  <ProtectedRoute allowedRoles={['trainee', 'pending']} fallback={<TraineeDashboardSkeleton />}>
+                    <TraineeLayout />
                   </ProtectedRoute>
                 }>
-                  <Route index element={<AdminDashboard />} />
-                </Route>
-
-                {/* HOD nested routes */}
-                <Route path="/hod" element={
-                  <ProtectedRoute allowedRoles={['hod']}>
-                    <HodLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<HodDashboard />} />
-                </Route>
-
-                {/* Student nested routes */}
-                <Route path="/student" element={
-                  <ProtectedRoute allowedRoles={['student']} fallback={<StudentDashboardSkeleton />}>
-                    <StudentLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<StudentDashboard />} />
+                  <Route index element={<TraineeDashboard />} />
+                  <Route path="credentials" element={<TraineeCredentialsPage />} />
                   <Route path="lecture-vault" element={<LectureVault />} />
                   <Route path="lecture-vault/:subjectSlug" element={<LectureVault />} />
                 </Route>
 
-                
-                {/* Principal nested routes */}
-                <Route path="/principal" element={
-                  <ProtectedRoute allowedRoles={['principal']}>
-                    <PrincipalLayout />
+                {/* ── NSSTA Instructor / Course Director ── */}
+                <Route path="/instructor" element={
+                  <ProtectedRoute allowedRoles={['instructor', 'teacher']}>
+                    <InstructorLayout />
                   </ProtectedRoute>
                 }>
-                  <Route index element={<PrincipalDashboard />} />
-                </Route>
-
-                <Route path="/registrar" element={
-                  <ProtectedRoute allowedRoles={['registrar']}>
-                    <RegistrarDashboard />
-                  </ProtectedRoute>
-                } />
-
-                {/* Teacher nested routes */}
-                <Route path="/teacher" element={
-                  <ProtectedRoute allowedRoles={['teacher']}>
-                    <TeacherLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<TeacherHome />} />
+                  <Route index element={<InstructorHome />} />
                   <Route path="lesson-plan" element={<LessonPlanPage />} />
                   <Route path="question-bank" element={<QuestionBankPage />} />
                   <Route path="examination" element={<ExaminationPage />} />
@@ -229,40 +159,32 @@ function App() {
                   <Route path="lecture-overview" element={<LectureOverview />} />
                   <Route path="lecture-overview/:lectureId" element={<LectureOverview />} />
                   <Route path="course-analytics" element={<CourseAnalytics />} />
-                  <Route path="profile" element={<TeacherProfile />} />
+                  <Route path="profile" element={<InstructorProfile />} />
                   <Route path="marks" element={<MarksDashboard />} />
                   <Route path="marks/edit" element={<MarksDashboard />} />
                   <Route path="marks/edit/:examId" element={<EditMarks />} />
-                  <Route path="student-analytics" element={<StudentAnalytics />} />
-                  <Route path="student-risk" element={<StudentAnalytics />} />
+                  <Route path="trainee-analytics" element={<TraineeAnalytics />} />
+                  <Route path="trainee-risk" element={<TraineeAnalytics />} />
                   <Route path="create-course" element={<CourseGeneratorPage />} />
                 </Route>
 
-                <Route path="/setup" element={
-                  <ProtectedRoute allowedRoles={['setup']}>
-                    <SetupInstitutionPage />
+                {/* ── MoSPI Directorate ── */}
+                <Route path="/directorate" element={
+                  <ProtectedRoute allowedRoles={['director', 'admin']}>
+                    <DirectorateLayout />
                   </ProtectedRoute>
-                } />
+                }>
+                  <Route index element={<DirectorateDashboard />} />
+                </Route>
 
-                <Route path="/statcap-admin" element={
-                  <ProtectedRoute allowedRoles={['statcapAdmin']}>
-                    <StatCapAdminDashboard />
-                  </ProtectedRoute>
-                } />
-
-                <Route path="/exam-controller" element={
-                  <ProtectedRoute allowedRoles={['examController']}>
-                    <ExamControllerDashboard />
-                  </ProtectedRoute>
-                } />
-
+                {/* ── Pending Approval ── */}
                 <Route path="/pending" element={
                   <ProtectedRoute allowedRoles={['pending']} fallback={<AuthLoadingScreen />}>
                     <PendingPage />
                   </ProtectedRoute>
                 } />
 
-                {/* Catch-all fallback for undefined routes */}
+                {/* Catch-all */}
                 <Route path="*" element={initialUser ? <NotFoundPage userRole={userRole} /> : <Navigate to="/" replace />} />
               </Routes>
 

@@ -5,17 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 
 const ROLE_PATHS: Record<string, string> = {
-  admin: '/admin',
-  student: '/student',
+  admin: '/directorate',
+  director: '/directorate',
+  student: '/trainee',
+  trainee: '/trainee',
   hod: '/hod',
   registrar: '/registrar',
   setup: '/setup',
   statcapAdmin: '/statcap-admin',
   examController: '/exam-controller',
   parent: '/parent',
-  teacher: '/teacher',
+  teacher: '/instructor',
+  instructor: '/instructor',
   principal: '/principal',
-  pending: '/pending',
+  pending: '/trainee',
 };
 
 interface NotFoundPageProps {

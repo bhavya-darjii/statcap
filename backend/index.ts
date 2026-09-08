@@ -10,6 +10,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import hierarchicalAnalyticsRoutes from './routes/hierarchicalAnalyticsRoutes.js';
 import noticeRoutes from './routes/noticeRoutes.js';
 import timetableRoutes from './routes/timetableRoutes.js';
+import credentialRoutes from './routes/credentialRoutes.js';
 import { generalLimiter } from './middleware/rateLimiter.js';
 
 const app = express();
@@ -89,6 +90,7 @@ app.use('/api/admin',     adminRoutes);
 app.use('/api/hier-analytics', hierarchicalAnalyticsRoutes);
 app.use('/api/notice',         noticeRoutes);
 app.use('/api/timetable', timetableRoutes);
+app.use('/api/credentials', credentialRoutes);
 
 // ─── Global Error Handler ────────────────────────────────────────────────────
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

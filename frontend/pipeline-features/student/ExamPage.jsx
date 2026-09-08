@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 import { gradeFullExam } from "../../services/aiService";
-import StudentDashboardSkeleton from "../../components/skeletons/StudentDashboardSkeleton";
+import TraineeDashboardSkeleton from "../../components/skeletons/TraineeDashboardSkeleton";
 import "./StudentDashboard.css";
 
 const ExamPage = () => {
