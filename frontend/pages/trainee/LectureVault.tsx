@@ -60,7 +60,7 @@ const LectureVault = () => {
           .from('users')
           .select('institution_id, semester, department, division')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (!profile?.institution_id) {
           if (mounted) {

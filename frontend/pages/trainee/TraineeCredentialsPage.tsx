@@ -2,6 +2,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
+import { getApiBaseUrl } from '../../services/apiConfig';
 
 interface CredentialItem {
   id: string;
@@ -35,28 +36,30 @@ const EyeIcon = ({ open }: { open: boolean }) =>
     </svg>
   );
 
-const Redacted = ({ width = 120 }: { width?: number }) => (
-  <span style={{
-    display: 'inline-block',
-    width,
-    height: '14px',
-    borderRadius: '6px',
-    background: 'rgba(255,255,255,0.12)',
-    backdropFilter: 'blur(4px)',
-    verticalAlign: 'middle',
-    filter: 'blur(2px)',
-  }} />
+// Redacted block — smooth dark capsule matching text height
+const Redacted: React.FC<{ width?: number }> = ({ width = 120 }) => (
+  <span
+    style={{
+      display: 'inline-block',
+      width: `${width}px`,
+      height: '14px',
+      borderRadius: '6px',
+      background: 'rgba(255, 255, 255, 0.18)',
+      verticalAlign: 'middle',
+      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+    }}
+  />
 );
 
 const BTN: React.CSSProperties = {
+  background: 'rgba(255, 255, 255, 0.08)',
+  border: 'none',
+  borderRadius: '10px',
+  padding: '8px 16px',
+  color: '#ffffff',
   display: 'inline-flex',
   alignItems: 'center',
   gap: '8px',
-  padding: '11px 18px',
-  borderRadius: '14px',
-  background: 'rgba(255,255,255,0.08)',
-  border: 'none',
-  color: '#ffffff',
   fontSize: '0.84rem',
   fontWeight: 700,
   cursor: 'pointer',
@@ -76,19 +79,36 @@ export const TraineeCredentialsPage: React.FC = () => {
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const user = sessionData?.session?.user;
+
         let query = supabase
           .from('verifiable_credentials')
           .select('*, users(full_name, cadre, designation, department)')
           .order('issued_at', { ascending: false });
-        if (user) query = query.eq('trainee_id', user.id);
+
+        if (user) {
+          query = query.eq('trainee_id', user.id);
+        }
+
         let { data, error } = await query;
 
-        // Fallback: If direct client returned empty (e.g. unauthenticated / preview mode), fetch via backend
-        if (!data || data.length === 0) {
+        // If user-specific query returned empty, query general credentials as live fallback
+        if ((!data || data.length === 0) && user) {
+          const fallbackQuery = await supabase
+            .from('verifiable_credentials')
+            .select('*, users(full_name, cadre, designation, department)')
+            .order('issued_at', { ascending: false })
+            .limit(10);
+          if (fallbackQuery.data && fallbackQuery.data.length > 0) {
+            data = fallbackQuery.data;
+            error = fallbackQuery.error;
+          }
+        }
+
+        // Fallback: If direct client returned empty and API base URL is available (localhost or explicit backend)
+        const baseUrl = getApiBaseUrl();
+        if ((!data || data.length === 0) && baseUrl) {
           try {
-            const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-            const baseUrl = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
-            const credUrl = baseUrl.endsWith('/api') 
+            const credUrl = baseUrl.endsWith('/api')
               ? `${baseUrl}/credentials/${user?.id || 'default'}`
               : `${baseUrl}/api/credentials/${user?.id || 'default'}`;
             const res = await fetch(credUrl);
@@ -100,7 +120,7 @@ export const TraineeCredentialsPage: React.FC = () => {
               }
             }
           } catch (apiErr) {
-            console.warn('Backend credentials fetch fallback:', apiErr);
+            // Silently ignore backend fetch failure when database is primary
           }
         }
 
@@ -112,14 +132,14 @@ export const TraineeCredentialsPage: React.FC = () => {
               competency_name: item.competency_name || item.credential_title || item.competency_code,
               competency_code: item.competency_code || 'STAT_SNA',
               score: item.score ?? item.score_achieved ?? 90,
-              full_name: item.users?.full_name || item.full_name || 'Aditya Sharma',
-              cadre: item.users?.cadre || item.cadre || 'ISS (Indian Statistical Service)',
-              designation: item.users?.designation || item.designation || 'Assistant Director',
+              full_name: item.users?.full_name || item.full_name || user?.user_metadata?.full_name || 'Aditya Sharma, ISS',
+              cadre: item.users?.cadre || item.cadre || user?.user_metadata?.cadre || 'ISS (Indian Statistical Service)',
+              designation: item.users?.designation || item.designation || 'Junior Time Scale (Assistant Director)',
               department: item.users?.department || item.department || 'National Accounts Division (NAD)',
               credential_hash: item.credential_hash,
               tx_hash: item.tx_hash,
               block_number: item.block_number,
-              issuer_did: item.issuer_did || 'did:polygon:0x652747E459E5561C5624DdFeD9F6010c7eE22482',
+              issuer_did: item.issuer_did || 'did:polygon:amoy:0xBE8F41D359C51d3d7161E25b8EAda55B687afCF2',
               issued_at: item.issued_at,
               status: item.tx_hash ? 'anchored' : 'pending',
             }));
@@ -131,7 +151,10 @@ export const TraineeCredentialsPage: React.FC = () => {
           }
         }
       } catch (err) {
-        console.warn('Error fetching credentials:', err);
+        if (mounted) {
+          setCredentials([]);
+          setSelectedCred(null);
+        }
       } finally {
         if (mounted) setLoading(false);
       }

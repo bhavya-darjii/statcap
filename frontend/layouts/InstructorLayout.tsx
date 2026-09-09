@@ -40,7 +40,7 @@ const InstructorLayout = () => {
 
       let iName = "Instructor";
       try {
-        const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).single();
+        const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
         if (userData && userData.full_name) {
           iName = userData.full_name.split(' ')[0];
         } else if (user.user_metadata?.full_name) {

@@ -53,7 +53,7 @@ const InstructorProfile = () => {
           .from('users')
           .select('full_name, email, department, college_name')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         const resolvedName = dbUser?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
         const resolvedEmail = session.user.email || dbUser?.email || '';

@@ -9,8 +9,15 @@
  */
 
 import { supabase } from './supabase';
+import { getApiBaseUrl } from './apiConfig';
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
+const getBaseUrl = (): string => {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase) return '';
+  return apiBase.endsWith('/api') ? apiBase.slice(0, -4) : apiBase;
+};
+
+const BASE = getBaseUrl();
 
 // ─── Shared Types ─────────────────────────────────────────────────────────────
 
@@ -184,6 +191,7 @@ const getAuthHeaders = async (): Promise<Record<string, string> | null> => {
 };
 
 const fetchJSON = async <T>(path: string): Promise<T | null> => {
+  if (!BASE) return null;
   const headers = await getAuthHeaders();
   if (!headers) return null;
   try {

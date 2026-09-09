@@ -11,9 +11,11 @@ import './DirectorateDashboard.css';
 import GlassSelect from '../../components/shared/GlassSelect';
 import AdminDashboardSkeleton from '../../components/skeletons/AdminDashboardSkeleton';
 
-const rawBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+import { getApiBaseUrl } from '../../services/apiConfig';
+
+const rawBase = getApiBaseUrl();
 const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
-const ADMIN_URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/admin` : `${BASE_URL}/api/admin`;
+const ADMIN_URL = BASE_URL ? (BASE_URL.endsWith('/api') ? `${BASE_URL}/admin` : `${BASE_URL}/api/admin`) : '';
 
 const PIE_COLORS = ['#ea580c','#f97316','#fb923c','#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444'];
 
@@ -170,19 +172,26 @@ export default function AdminDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { "Authorization": session ? `Bearer ${session.access_token}` : "" };
 
-      const [sumRes, logRes] = await Promise.all([
-        fetch(`${ADMIN_URL}/summary`, { headers }),
-        fetch(`${ADMIN_URL}/logs?pageSize=500`, { headers }),
-      ]);
-      if (!sumRes.ok || !logRes.ok) throw new Error('Server returned an error');
-      const sumData = await sumRes.json();
-      const logData = await logRes.json();
-      setSummary(sumData);
-      setLogs(logData.logs || []);
+      if (ADMIN_URL) {
+        try {
+          const [sumRes, logRes] = await Promise.all([
+            fetch(`${ADMIN_URL}/summary`, { headers }),
+            fetch(`${ADMIN_URL}/logs?pageSize=500`, { headers }),
+          ]);
+          if (sumRes.ok && logRes.ok) {
+            const sumData = await sumRes.json();
+            const logData = await logRes.json();
+            setSummary(sumData);
+            setLogs(logData.logs || []);
+          }
+        } catch (_) {
+          // Graceful fallback when backend is unreachable
+        }
+      }
 
       // Fetch current admin's data
       if (session?.user) {
-        const { data: adminData } = await supabase.from('users').select('*').eq('id', session.user.id).single();
+        const { data: adminData } = await supabase.from('users').select('*').eq('id', session.user.id).maybeSingle();
         if (adminData) {
           setCurrentUserData({ ...adminData });
 
@@ -743,11 +752,11 @@ export default function AdminDashboard() {
             {monthlyData.length === 0 ? (
               <div className="no-data-msg">No monthly data yet</div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={220} minWidth={0}>
                 <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }} barSize={26}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={v => `Î“Ã©â•£${v}`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={52} />
+                  <YAxis tickFormatter={v => `₹${v}`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={52} />
                   <Tooltip content={<BarTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                   <Bar dataKey="costINR" name="costINR" radius={[5, 5, 0, 0]}>
                     {monthlyData.map((_, i) => (
@@ -767,7 +776,7 @@ export default function AdminDashboard() {
             {monthlyData.length === 0 ? (
               <div className="no-data-msg">No monthly data yet</div>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={220} minWidth={0}>
                 <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: 0, bottom: 4 }} barSize={26}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="month" tickFormatter={monthLabel} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -850,7 +859,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="pie-wrap">
                 <div className="pie-chart-area">
-                  <ResponsiveContainer width={180} height={180}>
+                  <ResponsiveContainer width={180} height={180} minWidth={0}>
                     <PieChart>
                       <Pie data={pieData} cx="50%" cy="50%" innerRadius={52} outerRadius={84} dataKey="value" paddingAngle={3}>
                         {pieData.map((entry, i) => (

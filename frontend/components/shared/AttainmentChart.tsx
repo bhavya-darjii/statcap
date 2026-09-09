@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 // @ts-nocheck
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import './AttainmentChart.css';
@@ -8,7 +8,7 @@ const COLORS = ['#5E5CE6', '#32D2F5', '#14b8a6', '#f97316', '#ef4444', '#8b5cf6'
 const AttainmentChart = ({ data = [], title = 'CO Attainment', height = 280 }) => (
   <div className="attainment-chart glass-card">
     {title && <h3 className="attainment-chart__title">{title}</h3>}
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height} minWidth={0}>
       <BarChart data={data} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="rgba(15,23,42,0.08)" />
         <XAxis dataKey="co" tick={{ fill: '#ffffff', fontSize: 12 }} />

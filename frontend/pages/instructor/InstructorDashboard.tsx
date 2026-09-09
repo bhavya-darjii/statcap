@@ -45,7 +45,7 @@ const InstructorDashboard = () => {
         if (user.user_metadata?.full_name) {
           teacherName = user.user_metadata.full_name.split(' ')[0];
         } else {
-          const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).single();
+          const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
           if (userData?.full_name) teacherName = userData.full_name.split(' ')[0];
         }
       } catch (error) {

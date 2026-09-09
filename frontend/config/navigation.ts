@@ -1,16 +1,7 @@
 /* eslint-disable */
 // @ts-nocheck
 export const INSTRUCTOR_NAV = [
-  { path: '/instructor', label: 'Home', category: 'Overview' },
-  { path: '/instructor/profile', label: 'Cadre Profile', category: 'Overview' },
-  { path: '/instructor/lesson-plan', label: 'Training Plan', category: 'Cadre Modules' },
-  { path: '/instructor/lecture-overview', label: 'Lecture Overview', category: 'Cadre Modules' },
-  { path: '/instructor/question-bank', label: 'Question Bank', category: 'Cadre Modules' },
-  { path: '/instructor/examination', label: 'Assessments', category: 'Cadre Modules' },
-  { path: '/instructor/marks', label: 'Evaluation & Scores', category: 'Competencies' },
-  { path: '/instructor/course-analytics', label: 'Cohort Analytics', category: 'Competencies' },
-  { path: '/instructor/trainee-analytics', label: 'Skill Gap Analytics', category: 'Competencies' },
-  { path: '/instructor/create-course', label: '+ New Module', highlight: true },
+  { path: '/instructor/create-course', label: 'Course Generator', highlight: true },
 ];
 
 export const DIRECTORATE_NAV = [

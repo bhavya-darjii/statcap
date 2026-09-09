@@ -38,7 +38,7 @@ const NotFoundPage: React.FC<NotFoundPageProps> = ({ userRole, isAccessDenied = 
       } else {
         supabase.auth.getUser().then(({ data: { user } }) => {
           if (user) {
-            supabase.from('users').select('user_type').eq('id', user.id).single().then(({ data }) => {
+            supabase.from('users').select('user_type').eq('id', user.id).maybeSingle().then(({ data }) => {
               if (data?.user_type) setCachedRole(data.user_type);
             });
           }

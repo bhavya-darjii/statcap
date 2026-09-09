@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
+import { getApiBaseUrl } from '../../services/apiConfig';
 import GlassSelect from '../../components/shared/GlassSelect';
 import './ExaminationEditor.css';
 
@@ -360,7 +361,12 @@ const ExaminationEditor = () => {
     
     setGenerating(true);
     try {
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+      const backendUrl = getApiBaseUrl();
+      if (!backendUrl) {
+        showToast("Backend export service is unavailable in this environment.", "error");
+        setGenerating(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${backendUrl}/export/exam`, {
         method: "POST",

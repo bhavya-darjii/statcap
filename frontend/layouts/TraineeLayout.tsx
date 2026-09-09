@@ -23,7 +23,7 @@ const TraineeLayout = () => {
 
     const fetchTraineeName = async (user) => {
       try {
-        const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).single();
+        const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
         if (mounted) {
           if (userData && userData.full_name) {
             setTraineeName(userData.full_name.split(' ')[0]);

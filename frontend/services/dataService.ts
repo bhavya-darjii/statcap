@@ -267,7 +267,7 @@ export const getLinkedStudent = async (parentId) => {
       .select('student_id, relationship')
       .eq('parent_id', parentId)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error || !data) return null;
 
@@ -275,7 +275,7 @@ export const getLinkedStudent = async (parentId) => {
       .from('users')
       .select('id, full_name, email, institution_id, semester, department')
       .eq('id', data.student_id)
-      .single();
+      .maybeSingle();
 
     return student || null;
   } catch {
@@ -398,7 +398,7 @@ export const getPresentationById = async (historyId) => {
     .from('presentation_history')
     .select('presentation_json, lecture_title')
     .eq('id', historyId)
-    .single();
+    .maybeSingle();
     
   if (error) return null;
   return data;

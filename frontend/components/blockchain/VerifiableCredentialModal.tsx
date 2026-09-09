@@ -65,7 +65,7 @@ export const VerifiableCredentialModal: React.FC<VerifiableCredentialProps> = ({
           query = query.eq('trainee_id', traineeId).order('issued_at', { ascending: false }).limit(1);
         }
 
-        const { data, error: dbError } = await query.single();
+        const { data, error: dbError } = await query.maybeSingle();
 
         if (dbError || !data) {
           setError('No credential found. Issue a credential first via an assessment.');

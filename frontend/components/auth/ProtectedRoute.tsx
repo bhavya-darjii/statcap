@@ -82,7 +82,7 @@ const ProtectedRoute = ({ children, allowedRoles, fallback }: ProtectedRouteProp
             .from('users')
             .select('user_type')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (userDoc?.user_type) {
             docRole = userDoc.user_type;

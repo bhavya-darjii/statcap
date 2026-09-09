@@ -227,3 +227,21 @@ export const parseSyllabus = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ error: 'Failed to parse syllabus', details: err instanceof Error ? err.message : String(err) });
   }
 };
+
+// ─── 14. Generate MoSPI Assessment ────────────────────────────────────────────
+export const generateMospiAssessment = async (req: Request, res: Response): Promise<void> => {
+  const { documentText, numQuestions } = req.body as {
+    documentText?: string; competencyCode?: string; cadre?: string; numQuestions?: number;
+  };
+  try {
+    const result = await generateQuestionsFromSyllabusService(
+      { syllabus: documentText || '', examLength: numQuestions || 5 },
+      getCtx(req)
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[aiController] generateMospiAssessment error:', err);
+    res.status(200).json([]);
+  }
+};
+

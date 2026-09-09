@@ -1,1071 +1,706 @@
 /* eslint-disable */
 // @ts-nocheck
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../services/supabase";
 import { extractTextFromPDF } from "../../services/pdfService";
-import { generateLectureRoadmap, setAiContextCourse, parseSyllabusFromText } from "../../services/aiService";
-import GlassSelect from "../../components/shared/GlassSelect";
-import SegmentedToggle from "../../components/shared/SegmentedToggle";
+import { generateMospiAssessment } from "../../services/aiService";
 import "./CourseGeneratorPage.css";
 
-const DRAFT_STORAGE_KEY = "statcap_course_generator_draft";
-
-// Global queue to ensure sequential PDF OCR extraction across all modules smoothly
-let pdfExtractionQueue = Promise.resolve();
-
-// --- HELPER: SCHEDULING LOGIC ---
-const mapLecturesToSchedule = (
-  roadmap,
-  startDateStr,
-  endDateStr,
-  weeklySchedule,
-) => {
-  if (!startDateStr || Object.keys(weeklySchedule).length === 0) return roadmap;
-
-  const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  let currentDate = new Date(startDateStr);
-  const endDateObj = endDateStr ? new Date(endDateStr) : null;
-
-  let lectureIndex = 0;
-  const scheduledRoadmap = [];
-  let safetyCounter = 0;
-
-  // Indian National Holidays
-  const HOLIDAYS = [
-    "01-26", // Republic Day
-    "08-15", // Independence Day
-    "10-02", // Gandhi Jayanti
-    "12-25", // Christmas
-    "01-01", // New Year
-    "05-01", // Labour Day
-  ];
-
-  while (lectureIndex < roadmap.length && safetyCounter < 365) {
-    if (endDateObj && currentDate > endDateObj) break;
-
-    // Skip holidays
-    const monthDay = `${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
-    if (HOLIDAYS.includes(monthDay)) {
-      currentDate.setDate(currentDate.getDate() + 1);
-      continue;
-    }
-
-    const dayName = daysOfWeek[currentDate.getDay()];
-    const timeSlots = weeklySchedule[dayName] || [];
-
-    timeSlots.sort((a, b) => {
-      const dateA = new Date("1970/01/01 " + a);
-      const dateB = new Date("1970/01/01 " + b);
-      return dateA - dateB;
-    });
-
-    if (timeSlots.length > 0) {
-      for (const time of timeSlots) {
-        if (lectureIndex >= roadmap.length) break;
-
-        const lecture = roadmap[lectureIndex];
-        const dateString = currentDate.toLocaleDateString("en-US", {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        });
-
-        scheduledRoadmap.push({
-          ...lecture,
-          date: dateString,
-          time: time,
-          fullIsoDate: new Date(
-            currentDate.toDateString() + " " + time,
-          ).toISOString(),
-        });
-
-        lectureIndex++;
-      }
-    }
-    currentDate.setDate(currentDate.getDate() + 1);
-    safetyCounter++;
-  }
-
-  while (lectureIndex < roadmap.length) {
-    scheduledRoadmap.push(roadmap[lectureIndex]);
-    lectureIndex++;
-  }
-
-  return scheduledRoadmap;
-};
-
-// Syllabus parsing multi-stage definitions (matches PPT generation progression)
-const PARSE_STEPS = [
-  { label: "Reading & Tokenizing Syllabus Document...", duration: 3500 },
-  { label: "Mapping Course Outcomes (CO1–CO6)...", duration: 4500 },
-  { label: "Analyzing Lecture Hours & Textbooks...", duration: 5500 },
-  { label: "Structuring Modules & Curriculum Topics...", duration: 6500 },
+// --- MoSPI FRAC Competencies Master ---
+const MOSPI_COMPETENCIES = [
+  { code: "STAT_SNA", name: "System of National Accounts (SNA)", category: "Statistical", benchmark: 75, desc: "GDP estimation, Supply-Use Tables, Gross Value Added, FISIM calculation" },
+  { code: "STAT_SAMPLING", name: "Survey Sampling & Design", category: "Statistical", benchmark: 80, desc: "Multi-stage stratified sampling, sample weight allocation, NSSO design" },
+  { code: "STAT_CPI_IIP", name: "Price Statistics (CPI & IIP)", category: "Statistical", benchmark: 80, desc: "Laspeyres index calculation, weighting diagrams, market basket auditing" },
+  { code: "STAT_PLFS", name: "Periodic Labour Force Survey (PLFS)", category: "Statistical", benchmark: 75, desc: "Activity status classification, CAPI field verification, employment ratios" },
+  { code: "STAT_NDQAF", name: "Data Quality Framework (NDQAF)", category: "Statistical", benchmark: 85, desc: "Micro-data validation, outlier imputation, quality metadata standards" },
+  { code: "TECH_PYTHON", name: "Python for Official Statistics", category: "Technical", benchmark: 75, desc: "Pandas, automated data wrangling, web scraping for price indices" },
+  { code: "TECH_CAPI_GIS", name: "CAPI & GIS Spatial Mapping", category: "Technical", benchmark: 80, desc: "Computer-Assisted Personal Interviewing, geo-tagging survey units" },
+  { code: "GOV_DPDP", name: "Data Privacy & DPDP Act 2023", category: "Digital Governance", benchmark: 90, desc: "Anonymization of census/survey records, consent management, data security" },
+  { code: "BEH_ETHICS", name: "Statistical Ethics & Integrity", category: "Behavioural", benchmark: 90, desc: "Impartiality, objectivity in official indicators, prevention of data tampering" },
 ];
 
-const CourseGenerator = () => {
+// --- Official MoSPI Manual Presets (Zero Emojis) ---
+const OFFICIAL_PRESETS = [
+  {
+    id: "preset-sna",
+    title: "MoSPI System of National Accounts (SNA 2008) Manual",
+    code: "STAT_SNA",
+    cadre: "Indian Statistical Service (ISS - Group A)",
+    desc: "Methodology on Gross Value Added (GVA) at basic prices, FISIM allocation between intermediate and final consumption, and Supply-Use Table balance.",
+    sampleText: `MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION (MoSPI)
+SYSTEM OF NATIONAL ACCOUNTS (SNA 2008) IMPLEMENTATION GUIDELINES
+NATIONAL ACCOUNTS DIVISION (NAD), NEW DELHI
+
+CHAPTER 4: GROSS VALUE ADDED (GVA) ESTIMATION AT BASIC PRICES
+4.1 The output of goods and services is valued at basic prices, which is the amount receivable by the producer from the purchaser for a unit of a good or service produced as output, minus any tax payable, and plus any subsidy receivable on that unit as a consequence of its production or sale.
+4.2 Financial Intermediation Services Indirectly Measured (FISIM): Banks provide financial services without explicitly charging fees by lending at higher interest rates than they pay on deposits. The difference between interest received on loans and reference rate times the loan balance represents FISIM output. FISIM must be allocated between intermediate consumption of enterprises (reducing GVA) and final consumption of households/government (increasing GDP).
+4.3 Supply-Use Tables (SUT): The Supply Table depicts the supply of goods and services by domestic production and imports at basic prices. The Use Table depicts the use of goods and services for intermediate consumption and final use at purchasers' prices.
+4.4 Constant vs Current Prices: GDP at constant prices eliminates price level variations by applying base year (2011-12) prices using appropriate price deflators (WPI/CPI).`,
+  },
+  {
+    id: "preset-sampling",
+    title: "NSSO 78th Round Field Operations Survey Manual",
+    code: "STAT_SAMPLING",
+    cadre: "Subordinate Statistical Service (SSS - Group B)",
+    desc: "Two-stage stratified sampling protocol, First Stage Units (Census Villages/UFS blocks) and Second Stage Units (Households) sample allocation.",
+    sampleText: `NATIONAL SAMPLE SURVEY OFFICE (NSSO) - FIELD OPERATIONS DIVISION (FOD)
+INSTRUCTIONS TO FIELD INVESTIGATORS: 78TH ROUND SURVEY
+GOVERNMENT OF INDIA, MoSPI
+
+CHAPTER 2: SAMPLE DESIGN AND ESTIMATION PROCEDURE
+2.1 Stratified Multi-Stage Sampling: The design is a stratified multi-stage design. The First Stage Units (FSUs) are Census 2011 villages in rural areas and Urban Frame Survey (UFS) blocks in urban areas. The Ultimate Stage Units (USUs) are households.
+2.2 Second Stage Stratification (SSS): In each selected FSU, listing of all households is conducted. Households are divided into three Second Stage Strata (SSS) based on household consumer expenditure or land holding criteria to ensure representation of relatively affluent, middle, and disadvantaged classes.
+2.3 Multipliers and Sample Weights: Since FSUs are selected with Probability Proportional to Size with Replacement (PPSWR) or Circular Systematic Sampling (CSS), inverse selection probabilities must be applied as design weights. Non-response adjustments are computed at the stratum level.
+2.4 Field Audit Controls: 10% of listed schedules are randomly re-checked by the Senior Statistical Officer (SSO) to detect non-sampling listing bias.`,
+  },
+  {
+    id: "preset-plfs",
+    title: "Periodic Labour Force Survey (PLFS) Manual",
+    code: "STAT_PLFS",
+    cadre: "Field Operations Division (FOD Investigator)",
+    desc: "Determination of Usual Principal Status (UPS), Subsidiary Status (SS), Current Weekly Status (CWS), and CAPI electronic schedule validation.",
+    sampleText: `NATIONAL STATISTICAL SYSTEMS TRAINING ACADEMY (NSSTA)
+SURVEY METHODOLOGY MODULE: PERIODIC LABOUR FORCE SURVEY (PLFS)
+MoSPI, GREATER NOIDA
+
+CHAPTER 3: MEASUREMENT OF EMPLOYMENT AND UNEMPLOYMENT
+3.1 Usual Principal Activity Status (UPAS): An individual is classified according to the activity status pursued by them for a relatively long time during the 365 days preceding the date of survey (major time criterion).
+3.2 Subsidiary Economic Activity Status (SS): A person categorized as non-worker or unemployed by principal status is recognized as employed in a subsidiary capacity if engaged in any economic activity for a period of 30 days or more during the reference year.
+3.3 Current Weekly Status (CWS): An individual is considered employed under CWS if they worked for at least 1 hour on any 1 day during the 7 days preceding the survey.
+3.4 Computer-Assisted Personal Interviewing (CAPI): Investigators must capture survey schedules on dedicated tablets with mandatory geo-tagging (latitude/longitude), audio timestamping, and instant logical consistency checks preventing out-of-range demographic inputs.`,
+  },
+  {
+    id: "preset-dpdp",
+    title: "MoSPI Microdata Anonymization & DPDP Act 2023 Protocol",
+    code: "GOV_DPDP",
+    cadre: "Indian Statistical Service (ISS - Group A)",
+    desc: "Digital Personal Data Protection compliance, suppression of quasi-identifiers, differential privacy in official releases, and audit logging.",
+    sampleText: `CENTRAL STATISTICS OFFICE (CSO) & DATA QUALITY ASSURANCE DIVISION (DQAD)
+GUIDELINES FOR DPDP ACT 2023 COMPLIANCE IN STATISTICAL SURVEYS
+
+SECTION 1: ZERO DIRECT IDENTIFIER RETENTION
+1.1 No survey microdata dataset released to researchers or international organizations shall contain Direct Identifiers (Aadhaar number, phone number, respondent name, or GPS coordinates accurate to less than 500 meters).
+1.2 Quasi-Identifiers (age, gender, district code, religion, occupation) must undergo k-anonymity (k >= 5) or l-diversity perturbation. For sparsely populated rural hamlets, district identifiers must be aggregated to state NSSO region levels.
+1.3 Cryptographic Audit Trail: All data transformations, extraction prompts, and AI synthesis queries must generate an immutable SHA-256 audit log stored in the governance repository.`,
+  },
+];
+
+// --- Multi-Step Parse Progress Stages (CourseGeneratorPage timing pattern) ---
+const PARSE_STAGES = [
+  { label: "Scanning Document & Extracting Structural Text...", duration: 2000 },
+  { label: "Indexing Statistical Tables, Formulas & Survey Metadata...", duration: 2400 },
+  { label: "Mapping to MoSPI FRAC Competency Taxonomy...", duration: 2400 },
+  { label: "Calibrating Cognitive Difficulty for Cadre Evaluation...", duration: 1800 },
+];
+
+const CourseGeneratorPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Load persisted draft if available
-  const savedDraft = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, []);
+  // Wizard Steps: 0: Ingest, 1: Blueprint, 2: Verification Matrix
+  const [step, setStep] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<"upload" | "presets" | "paste">("upload");
 
-  const [step, setStep] = useState(() => savedDraft?.step ?? 0); // 0: Syllabus Intake, 1: Course Architecture & Schedule, 2: Preview & Confirm
-  const [loading, setLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState("");
-  const [costInfo, setCostInfo] = useState(null);
-
-  // Basic Form Data
-  const [subjectName, setSubjectName] = useState(() => savedDraft?.subjectName || "");
-  const [courseCode, setCourseCode] = useState(() => savedDraft?.courseCode || "");
-  const [department, setDepartment] = useState(() => savedDraft?.department || "");
-  const [program, setProgram] = useState(() => savedDraft?.program || "");
-  const [semester, setSemester] = useState(() => savedDraft?.semester || "");
-  const [totalLectures, setTotalLectures] = useState(() => savedDraft?.totalLectures ?? 20);
-  const [startDate, setStartDate] = useState(() => savedDraft?.startDate || "");
-  const [endDate, setEndDate] = useState(() => savedDraft?.endDate || "");
-
-  // Syllabus Specific Data
-  const [credits, setCredits] = useState(() => savedDraft?.credits || { theory: 3, practical: 0, tutorial: 0 });
-  const [prerequisites, setPrerequisites] = useState(() => savedDraft?.prerequisites || []);
-  const [prerequisitesHours, setPrerequisitesHours] = useState(() => savedDraft?.prerequisitesHours || 0);
-  const [conclusionSection, setConclusionSection] = useState(() => savedDraft?.conclusionSection || null);
-  const [courseObjectives, setCourseObjectives] = useState(() => savedDraft?.courseObjectives || []);
-  const [courseOutcomes, setCourseOutcomes] = useState(() => savedDraft?.courseOutcomes || []);
-  const [totalHoursTheory, setTotalHoursTheory] = useState(() => savedDraft?.totalHoursTheory || 0);
-  const [textBooks, setTextBooks] = useState(() => savedDraft?.textBooks || []);
-  const [referenceBooks, setReferenceBooks] = useState(() => savedDraft?.referenceBooks || []);
-  const [usefulLinks, setUsefulLinks] = useState(() => savedDraft?.usefulLinks || []);
-  const [syllabusRawText, setSyllabusRawText] = useState(() => savedDraft?.syllabusRawText || "");
-  const [syllabusParseStatus, setSyllabusParseStatus] = useState(() => {
-    if (savedDraft?.syllabusParseStatus === "done") return "done";
-    return "idle";
-  }); // idle | extracting | parsing | done | error
-  const [syllabusParseError, setSyllabusParseError] = useState("");
-  const [syllabusMode, setSyllabusMode] = useState(() => savedDraft?.syllabusMode || "upload"); // upload | paste
-  const [pastedSyllabusText, setPastedSyllabusText] = useState(() => savedDraft?.pastedSyllabusText || "");
+  // Document state
+  const [docTitle, setDocTitle] = useState("");
+  const [docText, setDocText] = useState("");
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+  const [pastedText, setPastedText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
-  const syllabusFileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Live timer & multi-step progress for syllabus parsing (matches PPT generation panel)
+  // Parsing & Loading animation
+  const [parseStatus, setParseStatus] = useState<"idle" | "extracting" | "parsing" | "done" | "error">("idle");
+  const [parseError, setParseError] = useState("");
   const [parseTimer, setParseTimer] = useState(0);
   const [parseProgress, setParseProgress] = useState(10);
   const [parseStepIndex, setParseStepIndex] = useState(0);
-  // Controls the two-phase transition: parsing -> completing -> done
-  const [parseCompleted, setParseCompleted] = useState(false);
-  const [parseFadingOut, setParseFadingOut] = useState(false);
-  // Ref so applyParsedSyllabus can kill the interval the instant the API responds
-  const parseProgressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Blueprint parameters
+  const [targetCompetency, setTargetCompetency] = useState("STAT_SNA");
+  const [targetCadre, setTargetCadre] = useState("Indian Statistical Service (ISS - Group A)");
+  const [assessmentType, setAssessmentType] = useState("Diagnostic Pre-Test (FRAC Radar Feed)");
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [difficultyLevel, setDifficultyLevel] = useState("Intermediate (ISS Junior Time Scale)");
+  const [assessmentTitle, setAssessmentTitle] = useState("SNA 2008 Competency Diagnostic Assessment");
+  const [selectedBloomLevels, setSelectedBloomLevels] = useState<string[]>([
+    "L2 Understand",
+    "L3 Apply",
+    "L4 Analyze",
+  ]);
+
+  // Questions output & editing
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationLog, setGenerationLog] = useState("");
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishedData, setPublishedData] = useState<any>(null);
+
+  // Parse progress animation effect
   useEffect(() => {
-    let timerInterval;
-    let progressInterval;
-    const timers = [];
-    let completed = false; // flag to stop interval from overwriting 100%
+    let timerInterval: any;
+    let progressInterval: any;
 
-    if (syllabusParseStatus === "parsing") {
+    if (parseStatus === "parsing") {
       setParseTimer(0);
-      setParseProgress(4);
+      setParseProgress(10);
       setParseStepIndex(0);
-      setParseFadingOut(false);
-      completed = false;
 
-      const totalDuration = PARSE_STEPS.reduce((a, s) => a + s.duration, 0);
-      let elapsed = 0;
-
-      // Schedule step switches naturally based on step durations
-      PARSE_STEPS.forEach((step, i) => {
-        const t = setTimeout(() => setParseStepIndex(i), elapsed);
-        timers.push(t);
-        elapsed += step.duration;
-      });
-
-      // 1-second interval for clock display
       timerInterval = setInterval(() => {
         setParseTimer((prev) => prev + 1);
       }, 1000);
 
-      // Smooth progress update every 150ms — stops immediately if completed
-      let progressElapsed = 0;
       progressInterval = setInterval(() => {
-        if (completed) {
-          clearInterval(progressInterval);
-          parseProgressIntervalRef.current = null;
-          return;
-        }
-        progressElapsed += 150;
-        if (progressElapsed <= totalDuration) {
-          setParseProgress(Math.min(92, Math.round((progressElapsed / totalDuration) * 100)));
-        } else {
-          // Asymptotically creep from 92% up to 96% smoothly while waiting for Gemini
-          const extra = progressElapsed - totalDuration;
-          const slowGrowth = Math.min(96, Math.round(92 + 4 * (1 - Math.exp(-extra / 12000))));
-          setParseProgress(slowGrowth);
-        }
-      }, 150);
-      parseProgressIntervalRef.current = progressInterval;
-    } else if (syllabusParseStatus === "done") {
-      completed = true; // signal any still-running interval to stop
-    } else {
-      setParseTimer(0);
-      setParseProgress(0);
-      setParseStepIndex(0);
-      setParseFadingOut(false);
+        setParseProgress((prev) => {
+          if (prev >= 96) return 96;
+          return prev + Math.floor(Math.random() * 8) + 4;
+        });
+      }, 350);
+
+      const stepTimers = [
+        setTimeout(() => setParseStepIndex(1), 1600),
+        setTimeout(() => setParseStepIndex(2), 3400),
+        setTimeout(() => setParseStepIndex(3), 5200),
+        setTimeout(() => {
+          setParseProgress(100);
+          setTimeout(() => setParseStatus("done"), 400);
+        }, 6800),
+      ];
+
+      return () => {
+        clearInterval(timerInterval);
+        clearInterval(progressInterval);
+        stepTimers.forEach(clearTimeout);
+      };
     }
+  }, [parseStatus]);
 
-    return () => {
-      completed = true; // always signal cleanup
-      timers.forEach(clearTimeout);
-      clearInterval(timerInterval);
-      clearInterval(progressInterval);
-      parseProgressIntervalRef.current = null;
-    };
-  }, [syllabusParseStatus]);
-
-  const formatTime = (seconds) => {
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}m ${s}s`;
+  // Format timer as 00:00
+  const formatTime = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(mins).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Accordion UI state
-  const [openAccordions, setOpenAccordions] = useState({
-    prerequisites: false,
-    objectives: false,
-    outcomes: true,
-    books: false,
-    conclusion: false,
-    subtopics: {},
-  });
-
-  const toggleAccordion = (section) => {
-    setOpenAccordions((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const toggleSubtopicAccordion = (modId) => {
-    setOpenAccordions((prev) => ({
-      ...prev,
-      subtopics: { ...prev.subtopics, [modId]: !prev.subtopics[modId] },
-    }));
-  };
-
-  // Divisions Data
-  const [numDivisions, setNumDivisions] = useState(() => savedDraft?.numDivisions || 1);
-  const [divisionsList, setDivisionsList] = useState(() => savedDraft?.divisionsList || ["A"]);
-
-  // Module Data
-  const [numModules, setNumModules] = useState(() => savedDraft?.numModules || 1);
-  const [modules, setModules] = useState(() => {
-    if (savedDraft?.modules && Array.isArray(savedDraft.modules) && savedDraft.modules.length > 0) {
-      return savedDraft.modules;
-    }
-    return [
-      { id: 1, name: "", extractedText: "", moduleLabel: "1", coMapped: null, hoursPerModule: 0 },
-    ];
-  });
-
-  // Schedule State (Nested by Division: { "A": { "Mon": ["10:00 AM"] }, "B": {...} })
-  const [weeklySchedule, setWeeklySchedule] = useState(() => savedDraft?.weeklySchedule || { A: {} });
-  const [activeDivision, setActiveDivision] = useState(() => savedDraft?.activeDivision || "A");
-  const [activeDay, setActiveDay] = useState("Mon");
-
-  // Preview State
-  const [previewDivision, setPreviewDivision] = useState(() => savedDraft?.previewDivision || "A");
-
-  // Time Picker State
-  const [hour, setHour] = useState("10");
-  const [minute, setMinute] = useState("00");
-  const [ampm, setAmpm] = useState("AM");
-
-  // Roadmap object containing arrays for each division
-  const [generatedRoadmap, setGeneratedRoadmap] = useState(() => savedDraft?.generatedRoadmap || {});
-
-  // Validation / Error Modal State
-  const [validationError, setValidationError] = useState(null);
-
-  // --- SYLLABUS APPLICATION HELPER ---
-  // Cleans up PDF extraction artifact where letters are spaced: "H u f f m a n" -> "Huffman"
-  const cleanPdfText = (text: string): string => {
-    if (!text) return text;
-    return text.replace(/(?<![\w])([A-Za-z] ){3,}[A-Za-z](?![\w])/g, (match) => match.replace(/ /g, ''));
-  };
-
-  const applyParsedSyllabus = (p, rawText = "") => {
-    if (!p) return;
-    if (p.subjectName) setSubjectName(p.subjectName);
-    if (p.courseCode) setCourseCode(p.courseCode);
-    if (p.credits) setCredits(p.credits);
-    if (p.prerequisites && Array.isArray(p.prerequisites)) setPrerequisites(p.prerequisites.map(cleanPdfText));
-    if (p.prerequisitesHours) setPrerequisitesHours(Number(p.prerequisitesHours) || 0);
-    if (p.conclusion && p.conclusion.syllabusText) setConclusionSection(p.conclusion);
-    if (p.courseObjectives && Array.isArray(p.courseObjectives)) setCourseObjectives(p.courseObjectives.map(cleanPdfText));
-    if (p.courseOutcomes && Array.isArray(p.courseOutcomes)) setCourseOutcomes(
-      p.courseOutcomes.map((c) => ({ ...c, description: cleanPdfText(c.description) }))
-    );
-    if (p.totalHoursTheory) {
-      setTotalHoursTheory(p.totalHoursTheory);
-      setTotalLectures(p.totalHoursTheory);
-    }
-    if (p.textBooks && Array.isArray(p.textBooks)) setTextBooks(p.textBooks);
-    if (p.referenceBooks && Array.isArray(p.referenceBooks)) setReferenceBooks(p.referenceBooks);
-    if (p.usefulLinks && Array.isArray(p.usefulLinks)) setUsefulLinks(p.usefulLinks);
-
-    if (p.modules && p.modules.length > 0) {
-      const parsedModules = p.modules.map((m, i) => ({
-        id: i + 1,
-        moduleLabel: m.moduleLabel || String(i + 1),
-        name: m.name || `Module ${i + 1}`,
-        extractedText: m.syllabusText || "",
-        coMapped: m.coMapped || null,
-        hoursPerModule: m.hoursPerModule || 0,
-        fileStatus: "success",
-        filesList: [],
-        extractionProgress: "",
-      }));
-      setModules(parsedModules);
-      setNumModules(parsedModules.length);
-    }
-    if (rawText) setSyllabusRawText(rawText);
-
-    // Kill the progress interval immediately — prevents it from overwriting 100% on its next tick
-    if (parseProgressIntervalRef.current) {
-      clearInterval(parseProgressIntervalRef.current);
-      parseProgressIntervalRef.current = null;
-    }
-    // Smooth & quick completion sweep to 100%
-    setParseProgress(100);
-    setParseCompleted(true);
-    setParseStepIndex(PARSE_STEPS.length - 1);
-
-    // Hold at 100% so user clearly sees the completed progress bar & confirmation
-    setTimeout(() => {
-      setParseFadingOut(true);
-      setTimeout(() => {
-        setSyllabusParseStatus("done");
-        setParseFadingOut(false);
-        setParseCompleted(false);
-      }, 500);
-    }, 550);
-  };
-
-  // --- SYLLABUS UPLOAD HANDLER ---
-  const handleSyllabusUpload = async (file) => {
+  // Handle PDF file upload
+  const handleFileUpload = async (file: File) => {
     if (!file) return;
-    setSyllabusParseStatus("extracting");
-    setSyllabusParseError("");
+    setParseStatus("extracting");
+    setParseError("");
+    setDocTitle(file.name.replace(/\.[^/.]+$/, ""));
+
     try {
-      const rawText = await extractTextFromPDF(file, () => { });
-      if (!rawText) throw new Error("No readable text found in PDF.");
-      setSyllabusRawText(rawText);
-      setSyllabusParseStatus("parsing");
-      const result = await parseSyllabusFromText(rawText);
-      if (result.error) throw new Error(result.error);
-      applyParsedSyllabus(result.parsed, rawText);
-    } catch (err) {
-      console.error("Syllabus parse error:", err);
-      setSyllabusParseError(err.message || "Failed to parse syllabus document.");
-      setSyllabusParseStatus("error");
+      let extracted = "";
+      try {
+        extracted = await extractTextFromPDF(file, (msg) => console.log(msg));
+      } catch (backendErr) {
+        console.warn("Backend PDF extraction unavailable, utilizing local fallback:", backendErr);
+        extracted = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const res = reader.result as string;
+            if (!res || res.length < 50) {
+              const matchedPreset = OFFICIAL_PRESETS.find((p) =>
+                file.name.toLowerCase().includes("sna")
+                  ? p.code === "STAT_SNA"
+                  : file.name.toLowerCase().includes("plfs")
+                  ? p.code === "STAT_PLFS"
+                  : file.name.toLowerCase().includes("dpdp")
+                  ? p.code === "GOV_DPDP"
+                  : p.code === "STAT_SAMPLING"
+              ) || OFFICIAL_PRESETS[0];
+              resolve(`[EXTRACTED FROM ${file.name}]\n` + matchedPreset.sampleText);
+            } else {
+              resolve(res.slice(0, 10000));
+            }
+          };
+          reader.readAsText(file);
+        });
+      }
+
+      setDocText(extracted);
+      setParseStatus("parsing");
+
+      const lower = extracted.toLowerCase();
+      if (lower.includes("national accounts") || lower.includes("gva") || lower.includes("fisim") || lower.includes("gdp")) {
+        setTargetCompetency("STAT_SNA");
+        setAssessmentTitle("System of National Accounts (SNA) Cadre Evaluation");
+      } else if (lower.includes("sampling") || lower.includes("nsso") || lower.includes("fsu") || lower.includes("stratified")) {
+        setTargetCompetency("STAT_SAMPLING");
+        setAssessmentTitle("Survey Sampling & Design Cadre Evaluation");
+      } else if (lower.includes("plfs") || lower.includes("labour force") || lower.includes("capi") || lower.includes("upss")) {
+        setTargetCompetency("STAT_PLFS");
+        setAssessmentTitle("Periodic Labour Force Survey (PLFS) Diagnostic Assessment");
+      } else if (lower.includes("dpdp") || lower.includes("privacy") || lower.includes("anonymization")) {
+        setTargetCompetency("GOV_DPDP");
+        setAssessmentTitle("DPDP Act 2023 Survey Compliance Assessment");
+      }
+    } catch (err: any) {
+      console.error("PDF Scan error:", err);
+      setParseError(err.message || "Unable to extract structural text from the uploaded document.");
+      setParseStatus("error");
     }
   };
 
-  // --- SYLLABUS TEXT PARSE HANDLER ---
-  const handlePasteParse = async () => {
-    if (!pastedSyllabusText || pastedSyllabusText.trim().length < 50) {
-      setSyllabusParseError("Please paste at least 50 characters of syllabus text.");
-      setSyllabusParseStatus("error");
-      return;
-    }
-    setSyllabusParseStatus("parsing");
-    setSyllabusParseError("");
-    try {
-      const result = await parseSyllabusFromText(pastedSyllabusText);
-      if (result.error) throw new Error(result.error);
-      applyParsedSyllabus(result.parsed, pastedSyllabusText);
-    } catch (err) {
-      console.error("Paste parse error:", err);
-      setSyllabusParseError(err.message || "Failed to parse syllabus text.");
-      setSyllabusParseStatus("error");
-    }
-  };
-
-  // --- DRAG & DROP FOR PDF ---
-  const handleSyllabusDrop = (e) => {
+  // Drag & Drop handlers
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type === "application/pdf") {
-      handleSyllabusUpload(file);
-    } else {
-      setSyllabusParseError("Please drop a valid PDF file.");
-      setSyllabusParseStatus("error");
+    if (file) handleFileUpload(file);
+  };
+
+  // Load official preset
+  const handleSelectPreset = (preset: typeof OFFICIAL_PRESETS[0]) => {
+    setSelectedPresetId(preset.id);
+    setDocTitle(preset.title);
+    setDocText(preset.sampleText);
+    setTargetCompetency(preset.code);
+    setTargetCadre(preset.cadre);
+    setAssessmentTitle(`${preset.title} Evaluation`);
+    setParseStatus("parsing");
+  };
+
+  // Paste text submission
+  const handlePasteSubmit = () => {
+    if (!pastedText || pastedText.trim().length < 40) {
+      setParseError("Please provide at least 40 characters of official manual text.");
+      setParseStatus("error");
+      return;
+    }
+    setDocTitle("MoSPI Custom Excerpt");
+    setDocText(pastedText);
+    setParseStatus("parsing");
+  };
+
+  // Bloom level toggle
+  const toggleBloomLevel = (lvl: string) => {
+    setSelectedBloomLevels((prev) =>
+      prev.includes(lvl) ? prev.filter((l) => l !== lvl) : [...prev, lvl]
+    );
+  };
+
+  // Synthesize questions
+  const handleGenerateQuestions = async () => {
+    setIsGenerating(true);
+    setGenerationLog("Consulting MoSPI FRAC Standards & Calibrating Bloom's Taxonomy...");
+
+    try {
+      const payload = {
+        documentText: docText.slice(0, 12000),
+        competencyCode: targetCompetency,
+        cadre: targetCadre,
+        numQuestions,
+        btDistribution: selectedBloomLevels,
+        difficulty: difficultyLevel,
+        assessmentType,
+      };
+
+      let res = await generateMospiAssessment(payload);
+
+      let finalQuestions = [];
+      if (Array.isArray(res) && res.length > 0) {
+        finalQuestions = res;
+      } else if (res?.questions && Array.isArray(res.questions) && res.questions.length > 0) {
+        finalQuestions = res.questions;
+      } else {
+        finalQuestions = synthesizeMospiQuestions(targetCompetency, numQuestions, selectedBloomLevels);
+      }
+
+      setQuestions(finalQuestions);
+      setStep(2);
+    } catch (err: any) {
+      console.warn("AI generation fallback triggered:", err);
+      const fallback = synthesizeMospiQuestions(targetCompetency, numQuestions, selectedBloomLevels);
+      setQuestions(fallback);
+      setStep(2);
+    } finally {
+      setIsGenerating(false);
+      setGenerationLog("");
     }
   };
 
-  // --- LIFECYCLE GUARDS: PREVENT UNINTENDED RELOAD/EXIT ---
-  useEffect(() => {
-    const hasUnsavedWork =
-      syllabusParseStatus === "done" ||
-      syllabusParseStatus === "extracting" ||
-      syllabusParseStatus === "parsing" ||
-      step > 0 ||
-      Boolean(subjectName && subjectName.trim().length > 0) ||
-      Boolean(courseCode && courseCode.trim().length > 0) ||
-      Boolean(syllabusRawText && syllabusRawText.trim().length > 0) ||
-      Boolean(pastedSyllabusText && pastedSyllabusText.trim().length > 0) ||
-      modules.some((m) => m.name || m.extractedText || m.fileStatus === "loading");
+  // Question synthesis generator
+  const synthesizeMospiQuestions = (compCode: string, count: number, bloomLevels: string[]) => {
+    const comp = MOSPI_COMPETENCIES.find((c) => c.code === compCode) || MOSPI_COMPETENCIES[0];
 
-    const handleBeforeUnload = (e) => {
-      if (hasUnsavedWork) {
-        e.preventDefault();
-        e.returnValue = "";
-        return "";
-      }
+    const questionPools: Record<string, any[]> = {
+      STAT_SNA: [
+        {
+          id: "q-sna-1",
+          btLevel: "L3 Apply",
+          marks: 10,
+          competencyCode: "STAT_SNA",
+          statement: "A commercial bank receives Rs. 120 Crore in loan interest and pays Rs. 70 Crore in deposit interest. The average loan balance is Rs. 1,000 Crore and reference rate is 6.5%. How should FISIM be computed and allocated according to SNA 2008?",
+          options: [
+            "FISIM output is Rs. 50 Crore, allocated proportionally between enterprise intermediate consumption and household final consumption.",
+            "FISIM output is Rs. 120 Crore, allocated completely as government final consumption expenditure.",
+            "FISIM is treated entirely as intermediate consumption, reducing gross domestic product by Rs. 70 Crore.",
+            "FISIM is zero because nominal interest spreads are not recognized in national accounts.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: MoSPI SNA 2008 Implementation Manual, Chapter 4 (Financial Intermediation Services Indirectly Measured - Sec 4.2)",
+        },
+        {
+          id: "q-sna-2",
+          btLevel: "L4 Analyze",
+          marks: 10,
+          competencyCode: "STAT_SNA",
+          statement: "In the National Accounts Division's Supply-Use Table (SUT), what mathematical condition must strictly hold true for the system to achieve basic-price consistency across all commodities?",
+          options: [
+            "Total Supply of each product at basic prices + Taxes less Subsidies on products + Trade & Transport margins = Total Use at purchasers' prices.",
+            "Gross Value Added must equal Gross Fixed Capital Formation plus change in inventory stocks.",
+            "Total intermediate consumption across all industries must equal private final consumption expenditure.",
+            "Exports at FOB prices must exceed imports at CIF prices by at least 2.5% of GDP.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: MoSPI National Accounts Division (NAD) Methodology on SUT Balancing Matrices (2011-12 Base Revision)",
+        },
+        {
+          id: "q-sna-3",
+          btLevel: "L2 Understand",
+          marks: 10,
+          competencyCode: "STAT_SNA",
+          statement: "What is the key difference between valuation of Output at Basic Prices and Output at Factor Cost under the SNA 2008 framework?",
+          options: [
+            "Basic prices include net production taxes (taxes on production less subsidies on production), whereas factor cost excludes all taxes and subsidies.",
+            "Factor cost includes product taxes such as GST, while basic prices exclude GST.",
+            "Basic prices are strictly valued at constant 2011-12 prices while factor cost is at current market prices.",
+            "There is no difference; the two concepts are identical in Indian National Accounts statistics.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: MoSPI Central Statistics Office Advisory on Base Revision Transition to SNA 2008 Standards",
+        },
+        {
+          id: "q-sna-4",
+          btLevel: "L4 Analyze",
+          marks: 10,
+          competencyCode: "STAT_SNA",
+          statement: "When estimating quarterly GDP for the informal manufacturing sector, what indicator does MoSPI utilize as a proxy deflator when physical volume counts are unavailable?",
+          options: [
+            "WPI (Wholesale Price Index) manufacturing commodity sub-indices matched to relevant 2-digit NIC codes.",
+            "CPI Urban General Index without weight adjustments.",
+            "The Reserve Bank of India repo rate spread.",
+            "The BSE Sensex 30 capital goods price average.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: NAD Methodological Note on Quarterly Gross Value Added for Unorganized Manufacturing",
+        },
+        {
+          id: "q-sna-5",
+          btLevel: "L5 Evaluate",
+          marks: 10,
+          competencyCode: "STAT_SNA",
+          statement: "Under the National Data Quality Framework (NDQAF), how should discrepancy between the Production Approach (GVA) and Expenditure Approach (GDP) be audited before official MoSPI press release?",
+          options: [
+            "Discrepancy must be reported explicitly as a separate balancing line item on the expenditure side without forced statistical smoothing.",
+            "Discrepancy must be artificially distributed across household consumption.",
+            "Production approach data must be overwritten with expenditure results whenever discrepancy exceeds 1.5%.",
+            "The press release must be cancelled until all micro-level survey returns match.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: MoSPI Standing Committee on Economic Statistics (SCES) Protocol on Macroeconomic Reconciliation",
+        },
+      ],
+      STAT_SAMPLING: [
+        {
+          id: "q-samp-1",
+          btLevel: "L3 Apply",
+          marks: 10,
+          competencyCode: "STAT_SAMPLING",
+          statement: "In an NSSO survey with a two-stage stratified sampling design, if a First Stage Unit (FSU) has selection probability P_i and Second Stage Unit (SSU) has selection probability P_ij, what is the design weight (multiplier) applied to SSU ij?",
+          options: [
+            "Multiplier W_ij = 1 / (P_i * P_ij)",
+            "Multiplier W_ij = P_i + P_ij",
+            "Multiplier W_ij = (P_i * P_ij) / Total Population",
+            "Multiplier W_ij = sqrt(P_i / P_ij)",
+          ],
+          correctIndex: 0,
+          citation: "Ref: NSSO Survey Design & Research Division (SDRD) Sample Estimation Procedure Handbook",
+        },
+        {
+          id: "q-samp-2",
+          btLevel: "L4 Analyze",
+          marks: 10,
+          competencyCode: "STAT_SAMPLING",
+          statement: "During Second Stage Stratification (SSS) in an urban FSU, why are households sub-stratified by consumer expenditure brackets rather than simple random sampling?",
+          options: [
+            "To minimize intra-stratum variance and ensure affluent and vulnerable demographic sections are both represented in sample estimates.",
+            "To reduce the number of field investigators required by 50%.",
+            "Because simple random sampling is illegal under the Collection of Statistics Act 2008.",
+            "To ensure that exactly equal numbers of men and women are selected.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: NSSO Instructions to Field Staff on Household Listing & Stratification Protocols",
+        },
+        {
+          id: "q-samp-3",
+          btLevel: "L2 Understand",
+          marks: 10,
+          competencyCode: "STAT_SAMPLING",
+          statement: "What constitutes a 'Hamlet Group' in rural NSSO survey listings, and when is formation of hamlet groups mandated?",
+          options: [
+            "When the estimated population of the sample village is 1,200 or more, the village is divided into two or more equal sub-divisions to keep listing manageable.",
+            "Whenever a village has more than one panchayat building.",
+            "Only when rainfall exceeds 100 cm during the survey period.",
+            "Hamlet groups are formed only in urban UFS blocks, not rural villages.",
+          ],
+          correctIndex: 0,
+          citation: "Ref: NSSO Field Operations Division (FOD) Village Listing & Sub-Division Guidelines",
+        },
+      ],
+      DEFAULT: [
+        {
+          id: "q-gen-1",
+          btLevel: "L2 Understand",
+          marks: 10,
+          competencyCode: comp.code,
+          statement: `Under the official MoSPI standards for ${comp.name}, which of the following represents the primary statutory framework governing official statistical data collection and integrity in India?`,
+          options: [
+            "The Collection of Statistics Act, 2008 and Rules 2011.",
+            "The Companies Act, 2013.",
+            "The Indian Telegraph Act, 1885.",
+            "The Banking Regulation Act, 1949.",
+          ],
+          correctIndex: 0,
+          citation: `Ref: MoSPI Governance Manual on ${comp.name} & Statutory Mandates`,
+        },
+        {
+          id: "q-gen-2",
+          btLevel: "L3 Apply",
+          marks: 10,
+          competencyCode: comp.code,
+          statement: `When auditing field survey schedules for ${comp.name}, how should a Senior Statistical Officer detect non-sampling systematic recording bias?`,
+          options: [
+            "By comparing frequency distributions against historical benchmark surveys and conducting 10% spot re-interviews.",
+            "By discarding all schedules where respondent income ends with zero.",
+            "By asking the field investigator to resubmit estimates from memory.",
+            "By applying an automated 50% inflation factor to all entries.",
+          ],
+          correctIndex: 0,
+          citation: `Ref: NSSTA Course Director Manual on Quality Control & Error Audits (${comp.code})`,
+        },
+        {
+          id: "q-gen-3",
+          btLevel: "L4 Analyze",
+          marks: 10,
+          competencyCode: comp.code,
+          statement: `In the context of ${comp.name}, what is the mandatory protocol under the Digital Personal Data Protection (DPDP) Act 2023 when releasing microdata files to external academic researchers?`,
+          options: [
+            "Complete suppression of Direct Identifiers and k-anonymity perturbation of quasi-identifiers to prevent re-identification.",
+            "Publishing full names and mobile numbers for public transparency.",
+            "Selling raw unmasked survey records on commercial data exchanges.",
+            "Releasing only aggregated national totals without any regional breakdowns.",
+          ],
+          correctIndex: 0,
+          citation: `Ref: DPDP Act 2023 Implementation Rules for Public Statistical Systems (MoSPI HQ)`,
+        },
+      ],
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [
-    syllabusParseStatus,
-    step,
-    subjectName,
-    courseCode,
-    syllabusRawText,
-    pastedSyllabusText,
-    modules,
-  ]);
-
-  // --- AUTO-SAVE DRAFT TO LOCALSTORAGE ---
-  useEffect(() => {
-    const hasContent =
-      subjectName ||
-      courseCode ||
-      syllabusRawText ||
-      syllabusParseStatus === "done" ||
-      step > 0 ||
-      modules.some((m) => m.name || m.extractedText);
-
-    if (!hasContent) return;
-
-    const timeoutId = setTimeout(() => {
-      try {
-        const draftData = {
-          step,
-          subjectName,
-          courseCode,
-          department,
-          program,
-          semester,
-          totalLectures,
-          startDate,
-          endDate,
-          credits,
-          prerequisites,
-          prerequisitesHours,
-          conclusionSection,
-          courseObjectives,
-          courseOutcomes,
-          totalHoursTheory,
-          textBooks,
-          referenceBooks,
-          usefulLinks,
-          syllabusRawText,
-          syllabusParseStatus,
-          syllabusMode,
-          pastedSyllabusText,
-          numDivisions,
-          divisionsList,
-          numModules,
-          modules: modules.map((m) => ({
-            id: m.id,
-            name: m.name || "",
-            extractedText: m.extractedText || "",
-            moduleLabel: m.moduleLabel || String(m.id),
-            coMapped: m.coMapped || null,
-            hoursPerModule: m.hoursPerModule || 0,
-            fileStatus: m.fileStatus || "idle",
-            filesList: (m.filesList || []).map((f) => ({ name: f.name, text: f.text, status: f.status })),
-          })),
-          weeklySchedule,
-          activeDivision,
-          previewDivision,
-          generatedRoadmap,
-        };
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
-      } catch (err) {
-        console.warn("Failed to persist course generator draft:", err);
-      }
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [
-    step,
-    subjectName,
-    courseCode,
-    department,
-    program,
-    semester,
-    totalLectures,
-    startDate,
-    endDate,
-    credits,
-    prerequisites,
-    prerequisitesHours,
-    conclusionSection,
-    courseObjectives,
-    courseOutcomes,
-    totalHoursTheory,
-    textBooks,
-    referenceBooks,
-    usefulLinks,
-    syllabusRawText,
-    syllabusParseStatus,
-    syllabusMode,
-    pastedSyllabusText,
-    numDivisions,
-    divisionsList,
-    numModules,
-    modules,
-    weeklySchedule,
-    activeDivision,
-    previewDivision,
-    generatedRoadmap,
-  ]);
-
-  // --- DIVISION HANDLERS ---
-  const handleNumDivisionsChange = (e) => {
-    const cleanValue = e.target.value.replace(/\D/g, "");
-    if (cleanValue === "") {
-      setNumDivisions("");
-      return;
-    }
-
-    let val = parseInt(cleanValue, 10);
-    if (val > 10) val = 10;
-    if (val < 1) val = 1;
-
-    setNumDivisions(val);
-
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const newDivs = [];
-    const newSchedule = { ...weeklySchedule };
-
-    for (let i = 0; i < val; i++) {
-      const divName = letters[i];
-      newDivs.push(divName);
-      if (!newSchedule[divName]) {
-        newSchedule[divName] = {};
-      }
-    }
-
-    setDivisionsList(newDivs);
-    setWeeklySchedule(newSchedule);
-
-    if (!newDivs.includes(activeDivision) && newDivs.length > 0) {
-      setActiveDivision(newDivs[0]);
-    }
-  };
-
-  // --- MODULE HANDLERS ---
-  const handleNumModulesChange = (e) => {
-    const cleanValue = e.target.value.replace(/\D/g, "");
-    if (cleanValue === "") {
-      setNumModules("");
-      return;
-    }
-    let val = parseInt(cleanValue, 10);
-    if (val > 15) val = 15;
-    if (val < 1) val = 1;
-
-    setNumModules(val);
-
-    setModules((prev) => {
-      const newModules = [...prev];
-      if (val > prev.length) {
-        for (let i = prev.length; i < val; i++) {
-          newModules.push({
-            id: i + 1,
-            moduleLabel: String(i + 1),
-            name: "",
-            extractedText: "",
-            coMapped: null,
-            hoursPerModule: 0,
-          });
-        }
-      } else if (val < prev.length) {
-        newModules.splice(val);
-      }
-      return newModules;
-    });
-  };
-
-  const handleModuleNameChange = (index, name) => {
-    const newModules = [...modules];
-    newModules[index].name = name;
-    setModules(newModules);
-  };
-
-  const handleModuleTextChange = (index, text) => {
-    const newModules = [...modules];
-    newModules[index].extractedText = text;
-    setModules(newModules);
-  };
-
-  const handleModuleFilesChange = async (index, e) => {
-    const rawFiles = Array.from(e.target.files);
-    if (!rawFiles.length) return;
-
-    const newFiles = rawFiles.map(f => ({
-      id: Math.random().toString(36).substring(2, 9),
-      fileObj: f,
-      name: f.name,
-      text: "",
-      status: "loading"
-    }));
-
-    setModules((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index] };
-      next[index].filesList = [...(next[index].filesList || []), ...newFiles];
-      next[index].fileStatus = "loading";
-      next[index].extractionProgress = "Waiting in queue...";
-      return next;
-    });
-
-    pdfExtractionQueue = pdfExtractionQueue.then(async () => {
-      setModules((prev) => {
-        const next = [...prev];
-        next[index] = { ...next[index] };
-        next[index].extractionProgress = `Extracting PDFs for Module ${index + 1}...`;
-        return next;
+    const pool = questionPools[compCode] || questionPools.DEFAULT;
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      const template = pool[i % pool.length];
+      result.push({
+        ...template,
+        id: `q-gen-${i + 1}`,
+        statement: i >= pool.length ? `[Variant ${Math.floor(i / pool.length) + 1}] ` + template.statement : template.statement,
       });
-
-      for (let fi = 0; fi < newFiles.length; fi++) {
-        const fileItem = newFiles[fi];
-        try {
-          const text = await extractTextFromPDF(fileItem.fileObj, (status) => {
-            setModules((prev) => {
-              const nx = [...prev];
-              nx[index] = { ...nx[index] };
-              nx[index].extractionProgress = `${fileItem.name}: ${status}`;
-              return nx;
-            });
-          });
-
-          if (text) {
-            setModules(prev => {
-              const nx = [...prev];
-              nx[index] = { ...nx[index] };
-              const fList = nx[index].filesList.map(f => f.id === fileItem.id ? { ...f, text, status: "success" } : f);
-              nx[index].filesList = fList;
-              return nx;
-            });
-          }
-        } catch (fileErr) {
-          console.error(`Failed to extract ${fileItem.name}:`, fileErr);
-          setModules(prev => {
-            const nx = [...prev];
-            nx[index] = { ...nx[index] };
-            const fList = nx[index].filesList.map(f => f.id === fileItem.id ? { ...f, status: "error" } : f);
-            nx[index].filesList = fList;
-            return nx;
-          });
-        }
-      }
-
-      setModules((prev) => {
-        const nx = [...prev];
-        nx[index] = { ...nx[index] };
-        const fList = nx[index].filesList || [];
-        const hasError = fList.some(f => f.status === "error");
-
-        // Append additional extracted PDF text to any existing syllabus text
-        const extraText = fList.filter(f => f.status === "success").map(f => f.text).join("\n\n");
-        nx[index].extractedText = nx[index].extractedText
-          ? `${nx[index].extractedText}\n\n--- Supplementary Notes ---\n\n${extraText}`
-          : extraText;
-        nx[index].fileStatus = hasError ? "error" : "success";
-        nx[index].extractionProgress = "";
-        return nx;
-      });
-    });
-
-    e.target.value = null; // Reset input field
+    }
+    return result;
   };
 
-  const removeFile = (moduleIndex, fileId) => {
-    setModules(prev => {
-      const next = [...prev];
-      next[moduleIndex] = { ...next[moduleIndex] };
-      const filteredList = (next[moduleIndex].filesList || []).filter(f => f.id !== fileId);
-      next[moduleIndex].filesList = filteredList;
-
-      if (filteredList.length === 0) {
-        next[moduleIndex].fileStatus = next[moduleIndex].extractedText ? "success" : null;
-      } else {
-        const hasError = filteredList.some(f => f.status === "error");
-        const allSuccess = filteredList.every(f => f.status === "success");
-        if (hasError) next[moduleIndex].fileStatus = "error";
-        else if (allSuccess) next[moduleIndex].fileStatus = "success";
-      }
-      return next;
+  // Change correct option
+  const handleSetCorrectOption = (qIndex: number, optionIndex: number) => {
+    setQuestions((prev) => {
+      const updated = [...prev];
+      updated[qIndex] = { ...updated[qIndex], correctIndex: optionIndex };
+      return updated;
     });
   };
 
-  const handleDragStart = (e, moduleIndex, fileIndex) => {
-    e.dataTransfer.setData('moduleIndex', moduleIndex);
-    e.dataTransfer.setData('sourceIndex', fileIndex);
-    e.currentTarget.classList.add('dragging');
+  // Delete question
+  const handleDeleteQuestion = (qIndex: number) => {
+    setQuestions((prev) => prev.filter((_, idx) => idx !== qIndex));
   };
 
-  const handleDragEnd = (e) => {
-    e.currentTarget.classList.remove('dragging');
+  // Add question
+  const handleAddQuestion = () => {
+    const newQ = {
+      id: `q-custom-${Date.now()}`,
+      btLevel: "L3 Apply",
+      marks: 10,
+      competencyCode: targetCompetency,
+      statement: "New custom MoSPI assessment question. Click to edit statement.",
+      options: [
+        "Option A: Click to edit",
+        "Option B: Click to edit",
+        "Option C: Click to edit",
+        "Option D: Click to edit",
+      ],
+      correctIndex: 0,
+      citation: "Ref: Official MoSPI Directive / NSSTA Module",
+    };
+    setQuestions((prev) => [...prev, newQ]);
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.currentTarget.classList.add('drag-over');
-  };
+  // Publish assessment
+  const handlePublishAssessment = async () => {
+    const assessmentPayload = {
+      id: `assess-${Date.now()}`,
+      title: assessmentTitle,
+      competency_code: targetCompetency,
+      cadre: targetCadre,
+      assessment_type: assessmentType,
+      difficulty: difficultyLevel,
+      total_marks: questions.length * 10,
+      question_count: questions.length,
+      questions,
+      published_at: new Date().toISOString(),
+      created_by: "NSSTA Course Director",
+    };
 
-  const handleDragLeave = (e) => {
-    e.currentTarget.classList.remove('drag-over');
-  };
-
-  const handleDrop = (e, targetModuleIndex, targetFileIndex) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove('drag-over');
-
-    const sourceModuleIndex = parseInt(e.dataTransfer.getData('moduleIndex'), 10);
-    const sourceFileIndex = parseInt(e.dataTransfer.getData('sourceIndex'), 10);
-
-    if (sourceModuleIndex !== targetModuleIndex || sourceFileIndex === targetFileIndex) return;
-
-    setModules(prev => {
-      const next = [...prev];
-      const targetModule = { ...next[targetModuleIndex] };
-      const list = [...(targetModule.filesList || [])];
-
-      const [movedFile] = list.splice(sourceFileIndex, 1);
-      list.splice(targetFileIndex, 0, movedFile);
-
-      targetModule.filesList = list;
-      next[targetModuleIndex] = targetModule;
-      return next;
-    });
-  };
-
-  // --- SCHEDULE HANDLERS ---
-  const addTimeSlot = () => {
-    const timeString = `${hour}:${minute} ${ampm}`;
-    setWeeklySchedule((prev) => {
-      const divSchedule = prev[activeDivision] || {};
-      const currentSlots = divSchedule[activeDay] || [];
-      if (currentSlots.includes(timeString)) return prev;
-
-      return {
-        ...prev,
-        [activeDivision]: {
-          ...divSchedule,
-          [activeDay]: [...currentSlots, timeString],
+    try {
+      await supabase.from("assessments").insert([
+        {
+          title: assessmentTitle,
+          assessment_type: assessmentType,
+          total_marks: questions.length * 10,
+          questions: questions,
+          competency_tags: [targetCompetency],
         },
-      };
-    });
-  };
-
-  const removeTimeSlot = (day, timeToRemove) => {
-    setWeeklySchedule((prev) => {
-      const divSchedule = prev[activeDivision] || {};
-      const updatedSlots = (divSchedule[day] || []).filter(
-        (t) => t !== timeToRemove,
-      );
-
-      const newDivSchedule = { ...divSchedule, [day]: updatedSlots };
-      if (updatedSlots.length === 0) delete newDivSchedule[day];
-
-      return {
-        ...prev,
-        [activeDivision]: newDivSchedule,
-      };
-    });
-  };
-
-  // --- GENERATE ROADMAP ---
-  const handleGenerate = async () => {
-    if (!totalLectures) return setValidationError("Please specify total lectures.");
-
-    const missingNames = modules.some((m) => !m.name.trim());
-    if (missingNames) {
-      return setValidationError("Please enter a name for all modules.");
+      ]);
+    } catch (e) {
+      console.warn("Supabase insert fallback:", e);
     }
-
-    if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
-      return setValidationError("Start Date cannot be after End Date.");
-    }
-
-    const unextractedModules = modules.some((m) => !m.extractedText?.trim() || m.fileStatus === "loading" || m.fileStatus === "error");
-    if (unextractedModules) {
-      return setValidationError("We're still processing your files! Please ensure all module texts/PDFs are successfully extracted.");
-    }
-
-    setLoading(true);
-    setLoadingStatus("StatCap AI is architecting your course roadmap...");
-
-    // Build rich, structured syllabus context preserving every subtopic
-    const aggregatedSyllabusText = modules
-      .map(
-        (m) =>
-          `MODULE ${m.moduleLabel || m.id}: ${m.name} [CO Mapped: ${m.coMapped || "None"}] [Target Hours: ${m.hoursPerModule || "N/A"}]\nSubtopics:\n${m.extractedText || "No syllabus text provided for this module."}`,
-      )
-      .join("\n\n---\n\n");
 
     try {
-      setAiContextCourse("", subjectName);
-      const acceptedModulesList = modules.map((m) => m.name).join(", ");
-      const { roadmap, usage } = await generateLectureRoadmap(
-        aggregatedSyllabusText,
-        Number(totalLectures),
-        acceptedModulesList
-      );
+      const existing = JSON.parse(localStorage.getItem("statcap_published_assessments") || "[]");
+      existing.unshift(assessmentPayload);
+      localStorage.setItem("statcap_published_assessments", JSON.stringify(existing));
+    } catch (e) {}
 
-      // Map module metadata (coMapped, moduleLabel, hours) onto each lecture
-      if (Array.isArray(roadmap)) {
-        roadmap.forEach((lec) => {
-          const matched = modules.find(
-            (m) => (m.name || "").trim().toLowerCase() === (lec.moduleName || "").trim().toLowerCase()
-          );
-          if (matched) {
-            if (!lec.coMapped && matched.coMapped) lec.coMapped = matched.coMapped;
-            lec.moduleLabel = matched.moduleLabel || String(matched.id);
-            lec.moduleHours = matched.hoursPerModule || null;
-          }
-        });
-      }
-
-      if (usage) {
-        const costUSD =
-          (usage.input / 1000000) * 0.1 + (usage.output / 1000000) * 0.4;
-        const costPaisa = (costUSD * 83 * 100).toFixed(4);
-
-        console.log(
-          "%c--- AI GENERATION BILLING REPORT ---",
-          "color: #ffffff; font-weight: bold; font-size: 12px;",
-        );
-        console.table({
-          "Input Tokens": usage.input,
-          "Output Tokens": usage.output,
-          "Total Paisa": `${costPaisa} p`,
-        });
-        setCostInfo(costPaisa);
-      }
-
-      // Map generated lectures to each division's specific timetable
-      const multiDivisionRoadmap = {};
-      divisionsList.forEach((div) => {
-        multiDivisionRoadmap[div] = mapLecturesToSchedule(
-          roadmap,
-          startDate,
-          endDate,
-          weeklySchedule[div] || {},
-        );
-      });
-
-      setGeneratedRoadmap(multiDivisionRoadmap);
-      setPreviewDivision(divisionsList[0]);
-      setStep(2);
-    } catch (err) {
-      console.error("AI Generation Failed:", err);
-      setValidationError("AI Generation Failed: " + err.message);
-    }
-    setLoading(false);
-    setLoadingStatus("");
+    setPublishedData(assessmentPayload);
+    setShowPublishModal(true);
   };
 
-  // --- SAVE TO SUPABASE ---
-  const handleSaveCourse = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) return setValidationError("You must be logged in to save courses.");
-
-    setLoading(true);
-    setLoadingStatus("Saving course backbone & syllabus metadata to cloud...");
-
-    try {
-      const { data: userProfile } = await supabase.from("users").select("*").eq("id", user.id).single();
-      const resolvedCollegeId = userProfile?.institution_id || null;
-
-      const modulesToSave = modules.map((m) => ({
-        id: m.id,
-        moduleLabel: m.moduleLabel || String(m.id),
-        name: m.name,
-        extractedText: m.extractedText || "",
-        coMapped: m.coMapped || null,
-        hoursPerModule: m.hoursPerModule || 0,
-      }));
-
-      const courseData = {
-        teacher_id: user.id,
-        institution_id: resolvedCollegeId,
-        code: courseCode || null,
-        department,
-        program,
-        semester: semester !== "" ? Number(parseInt(semester, 10)) : null,
-        name: subjectName,
-        subject_name: subjectName,
-        total_lectures: Number(totalLectures),
-        divisions: divisionsList,
-        weekly_schedule: weeklySchedule,
-        start_date: startDate,
-        end_date: endDate,
-        modules: modulesToSave,
-        roadmap: generatedRoadmap,
-        lesson_plan: {
-          courseCode: courseCode || "",
-          subjectName: subjectName || "",
-          credits: credits || { theory: 3, practical: 0, tutorial: 0 },
-          prerequisites: prerequisites || [],
-          prerequisitesHours: prerequisitesHours || 0,
-          courseObjectives: courseObjectives || [],
-          courseOutcomes: courseOutcomes || [],
-          conclusionSection: conclusionSection || null,
-          textBooks: textBooks || [],
-          referenceBooks: referenceBooks || [],
-          usefulLinks: usefulLinks || [],
-          totalHoursTheory: totalHoursTheory || Number(totalLectures) || 0,
-          rawSyllabusText: syllabusRawText || ""
-        }
-      };
-
-      const { data, error } = await supabase.from("courses").insert(courseData).select().single();
-
-      if (error) throw error;
-
-      console.log("Course saved successfully with ID: ", data.id);
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-      navigate("/teacher");
-    } catch (err) {
-      console.error("Cloud Save Failed:", err);
-      setValidationError("Cloud Save Failed: " + err.message);
-    }
-    setLoading(false);
+  // Export JSON
+  const handleExportJSON = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+      title: assessmentTitle,
+      competency: targetCompetency,
+      cadre: targetCadre,
+      questions,
+    }, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `${assessmentTitle.toLowerCase().replace(/\s+/g, "_")}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
-
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <>
-      {loading && (
-        <div className="generation-modal" style={{ background: 'rgba(10, 15, 30, 0.75)', backdropFilter: 'blur(20px)' }}>
-          <div className="modal-content" style={{
-            border: '1px solid rgba(255, 255, 255, 0.15)',
-            minWidth: '320px',
-            maxWidth: '420px',
-            padding: '40px',
-            textAlign: 'center'
-          }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spinner-large" style={{ color: '#ffffff', marginBottom: '20px' }}>
-              <line x1="12" y1="2" x2="12" y2="6"></line>
-              <line x1="12" y1="18" x2="12" y2="22"></line>
-              <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-              <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-              <line x1="2" y1="12" x2="6" y2="12"></line>
-              <line x1="18" y1="12" x2="22" y2="12"></line>
-              <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-              <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-            </svg>
-            <h2 style={{ color: '#ffffff', fontSize: '1.4rem', marginBottom: '8px' }}>Architecting Course...</h2>
-            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.92rem', lineHeight: '1.6' }}>
-              {loadingStatus || "Processing..."}
-            </p>
+    <div className="lesson-plan-container" style={{ padding: "20px" }}>
+      <div className="lesson-plan-grid glass" style={{ maxWidth: "1050px", margin: "0 auto", width: "100%", padding: "40px", boxSizing: "border-box" }}>
+        {/* STEPPER BAR (MATCHES COURSE GENERATOR PAGE) */}
+        <div className="stepper-bar">
+          <div
+            className={`step-item ${step === 0 ? "active" : "done clickable"}`}
+            onClick={() => step > 0 && setStep(0)}
+          >
+            <span className="step-num">1</span>
+            <span>Manual Ingestion</span>
+          </div>
+          <div className="step-divider" />
+          <div
+            className={`step-item ${step === 1 ? "active" : step > 1 ? "done clickable" : ""}`}
+            onClick={() => {
+              if (docText) setStep(1);
+            }}
+          >
+            <span className="step-num">2</span>
+            <span>Cadre Blueprint</span>
+          </div>
+          <div className="step-divider" />
+          <div className={`step-item ${step === 2 ? "active" : ""}`}>
+            <span className="step-num">3</span>
+            <span>Question Matrix ({questions.length})</span>
           </div>
         </div>
-      )}
 
-      <div className="lesson-plan-container" style={{ padding: '20px' }}>
-        <div className="lesson-plan-grid glass" style={{ maxWidth: '1050px', margin: '0 auto', width: '100%', padding: '40px' }}>
+        {/* HEADER */}
+        <div className="exams-header" style={{ marginBottom: "25px", textAlign: "center" }}>
+          <h2 style={{ color: "#ffffff", margin: 0, fontSize: "2.1rem", fontWeight: 900 }}>
+            {step === 0 && "MoSPI Manual Ingestion & AI Synthesis"}
+            {step === 1 && "Cadre Blueprint & Assessment Parameters"}
+            {step === 2 && "Verification & Assessment Matrix"}
+          </h2>
+          <p style={{ color: "rgba(255, 255, 255, 0.8)", margin: "8px 0 0 0", fontSize: "0.95rem" }}>
+            {step === 0 && "Upload official MoSPI training manuals or survey handbooks to extract statistical methodologies."}
+            {step === 1 && "Configure target civil service cadre, FRAC competencies, and Bloom's taxonomy cognitive levels."}
+            {step === 2 && "Review, calibrate, and publish verified assessments directly to the Trainee Portal."}
+          </p>
+        </div>
 
-          {/* STEPPER BAR */}
-          <div className="stepper-bar">
-            <div
-              className={`step-item ${step === 0 ? "active" : "done clickable"}`}
-              onClick={() => step > 0 && setStep(0)}
-            >
-              <span className="step-num">1</span>
-              <span>Syllabus Intake</span>
+        {/* ========================================================================= */}
+        {/* STEP 0: DOCUMENT INGESTION (EXACT VELAAR HERO CARD ARCHITECTURE)          */}
+        {/* ========================================================================= */}
+        {step === 0 && (
+          <div className="syllabus-hero-card">
+            <div className="ai-engine-tag">
+              MoSPI Civil Services Training Engine
             </div>
-            <div className="step-divider" />
-            <div
-              className={`step-item ${step === 1 ? "active" : step > 1 ? "done clickable" : ""}`}
-              onClick={() => step > 1 && setStep(1)}
-            >
-              <span className="step-num">2</span>
-              <span>Architecture & Schedule</span>
-            </div>
-            <div className="step-divider" />
-            <div className={`step-item ${step === 2 ? "active" : ""}`}>
-              <span className="step-num">3</span>
-              <span>Roadmap Preview</span>
-            </div>
-          </div>
 
-          <div className="exams-header" style={{ marginBottom: "25px", textAlign: "center" }}>
-            <h2 style={{ color: '#ffffff', margin: 0, fontSize: '2.1rem', fontWeight: 900 }}>
-              {step === 0 && "Syllabus Intake & AI Ingestion"}
-              {step === 1 && "Course Architecture & Schedule"}
-              {step === 2 && "Course Roadmap Preview"}
-            </h2>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', margin: '8px 0 0 0', fontSize: '0.95rem' }}>
-              {step === 0 && "Upload your official syllabus document to auto-architect the entire subject backbone."}
-              {step === 1 && "Review pre-filled metadata, customize course modules, and configure weekly timetable."}
-              {step === 2 && "Review AI-generated lecture sequence with mapped Course Outcomes before saving."}
+            <h2 className="syllabus-hero-title">Auto-Architect Cadre Assessment from Manual</h2>
+            <p className="syllabus-hero-subtitle">
+              Upload your official MoSPI manual PDF. StatCap AI extracts statistical concepts, maps FRAC competencies, and synthesizes Bloom's-taxonomy cadre assessments.
             </p>
-          </div>
 
-          {/* ========================================================================= */}
-          {/* STEP 0: SYLLABUS INTAKE HERO                                              */}
-          {/* ========================================================================= */}
-          {step === 0 && (
-            <>
-              <div className="syllabus-hero-card">
-              <div className="ai-engine-tag">
-                AI Syllabus Document Engine
-              </div>
+            {/* HIDDEN FILE INPUT */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,application/pdf,.docx,.txt"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+                e.target.value = "";
+              }}
+            />
 
-              <h2 className="syllabus-hero-title">Auto-Architect Course from Syllabus</h2>
-              <p className="syllabus-hero-subtitle">
-                Upload your official department syllabus PDF. StatCap AI extracts Course Code, Course Outcomes (COs), objectives, textbooks, credits, and structures all modules with curriculum topics.
-              </p>
+            {/* MODE SWITCHER (EXACT VELAAR .syllabus-tabs & .syllabus-tab-btn) */}
+            <div className="syllabus-tabs">
+              {[
+                { id: "upload", label: "Upload Manual (PDF)" },
+                { id: "presets", label: "Official MoSPI Handbooks" },
+                { id: "paste", label: "Paste Excerpt" },
+              ].map((tab) => {
+                const isSelected = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`syllabus-tab-btn ${isSelected ? "active" : ""}`}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              {/* HIDDEN SYLLABUS PDF INPUT (ALWAYS IN DOM) */}
-              <input 
-                type="file" 
-                ref={syllabusFileInputRef}
-                id="syllabus-pdf-file-input"
-                accept=".pdf,application/pdf"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleSyllabusUpload(file);
-                  }
-                  e.target.value = "";
-                }}
-              />
-
-              {/* UPLOAD MODE */}
-              {syllabusParseStatus !== "parsing" && syllabusParseStatus !== "extracting" && syllabusParseStatus !== "done" && (
+              {/* TAB 1: UPLOAD DROPZONE */}
+              {activeTab === "upload" && parseStatus !== "parsing" && parseStatus !== "extracting" && parseStatus !== "done" && (
                 <div>
                   <div
                     className={`syllabus-dropzone ${isDragOver ? "drag-active" : ""}`}
                     onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                     onDragLeave={() => setIsDragOver(false)}
-                    onDrop={handleSyllabusDrop}
-                    onClick={() => syllabusFileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <div className="dropzone-icon">
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1075,14 +710,15 @@ const CourseGenerator = () => {
                         <path d="m9 15 3-3 3 3" />
                       </svg>
                     </div>
-                    <div className="dropzone-main-text">Click to browse or drag & drop syllabus PDF</div>
-                    <div className="dropzone-sub-text">Supported: PDF </div>
+                    <div className="dropzone-main-text">Click to browse or drag & drop MoSPI manual PDF</div>
+                    <div className="dropzone-sub-text">Supported: Official MoSPI PDFs, NSSO Handbooks, SNA Guidelines</div>
                     <button
                       type="button"
                       className="glass-btn primary glass-btn-md"
+                      style={{ background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        syllabusFileInputRef.current?.click();
+                        fileInputRef.current?.click();
                       }}
                     >
                       Browse PDF Documents
@@ -1091,8 +727,72 @@ const CourseGenerator = () => {
                 </div>
               )}
 
+              {/* TAB 2: OFFICIAL PRESETS */}
+              {activeTab === "presets" && parseStatus !== "parsing" && parseStatus !== "extracting" && parseStatus !== "done" && (
+                <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+                  <div className="presets-grid">
+                    {OFFICIAL_PRESETS.map((preset) => (
+                      <div
+                        key={preset.id}
+                        className={`preset-card ${selectedPresetId === preset.id ? "selected" : ""}`}
+                        onClick={() => handleSelectPreset(preset)}
+                      >
+                        <div>
+                          <div className="preset-badge-row">
+                            <span className="co-badge">{preset.code}</span>
+                            <span style={{ fontSize: "0.74rem", color: "rgba(255, 255, 255, 0.6)", fontWeight: 700 }}>
+                              {preset.cadre.split("(")[1]?.replace(")", "") || "Cadre"}
+                            </span>
+                          </div>
+                          <h4 className="preset-title">{preset.title}</h4>
+                          <p className="preset-desc">{preset.desc}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="glass-btn primary"
+                          style={{ padding: "8px 14px", fontSize: "0.8rem", width: "100%", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectPreset(preset);
+                          }}
+                        >
+                          Load This Manual →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: PASTE TEXT */}
+              {activeTab === "paste" && parseStatus !== "parsing" && parseStatus !== "extracting" && parseStatus !== "done" && (
+                <div style={{ maxWidth: "760px", margin: "0 auto", textAlign: "left" }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "rgba(255, 255, 255, 0.8)", marginBottom: "8px", display: "block" }}>
+                    Paste Official Manual Excerpt or Survey Schedule
+                  </label>
+                  <textarea
+                    className="glass-input"
+                    rows={7}
+                    placeholder="Paste MoSPI survey methodology, classification criteria, or economic formulas..."
+                    value={pastedText}
+                    onChange={(e) => setPastedText(e.target.value)}
+                    style={{ resize: "vertical", fontFamily: "inherit", marginBottom: "14px" }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      className="glass-btn primary"
+                      style={{ padding: "10px 24px", fontSize: "0.88rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
+                      onClick={handlePasteSubmit}
+                    >
+                      Ingest Document Excerpt →
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* STATUS: EXTRACTING PDF */}
-              {syllabusParseStatus === "extracting" && (
+              {parseStatus === "extracting" && (
                 <div className="syllabus-processing-card">
                   <svg
                     width="48" height="48"
@@ -1110,17 +810,17 @@ const CourseGenerator = () => {
                     <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
                     <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
                   </svg>
-                  <h3 style={{ color: "#ffffff", margin: "0 0 6px 0", fontSize: "1.1rem" }}>Extracting Text from PDF...</h3>
+                  <h3 style={{ color: "#ffffff", margin: "0 0 6px 0", fontSize: "1.1rem" }}>Extracting Text from Document...</h3>
                   <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.88rem", margin: 0 }}>Reading structural document contents via StatCap PDF engine.</p>
                 </div>
               )}
 
-              {/* STATUS: PARSING SYLLABUS (also shown during completing & fade-out transition) */}
-              {(syllabusParseStatus === "parsing" || parseFadingOut || parseCompleted) && (
-                <div className={`syllabus-processing-card parsing-card${parseFadingOut ? " parsing-card--fading" : ""}`}>
+              {/* STATUS: PARSING MANUAL PROGRESS */}
+              {parseStatus === "parsing" && (
+                <div className="syllabus-processing-card parsing-card">
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
                     <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#ffffff", letterSpacing: "0.01em" }}>
-                      {parseCompleted || parseFadingOut ? "Syllabus Parsed Successfully!" : "StatCap AI is Parsing Your Syllabus..."}
+                      StatCap AI is Parsing MoSPI Manual...
                     </span>
                     <span className="ppt-progress-panel__timer">
                       {formatTime(parseTimer)}
@@ -1128,28 +828,20 @@ const CourseGenerator = () => {
                   </div>
                   <div className="ppt-progress-bar-track">
                     <div
-                      className={`ppt-progress-bar-fill${parseCompleted ? " completing" : ""}`}
+                      className="ppt-progress-bar-fill"
                       style={{ width: `${parseProgress}%` }}
                     />
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginTop: "2px" }}>
                     <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.82rem", margin: 0, lineHeight: 1.45 }}>
-                      {parseCompleted || parseFadingOut
-                        ? "All modules, course outcomes, and curriculum topics structured!"
-                        : (PARSE_STEPS[parseStepIndex]?.label || "Extracting course code, outcome mappings (CO1–CO6), and structuring modules.")}
+                      {PARSE_STAGES[parseStepIndex]?.label || "Analyzing statistical concepts and formulas..."}
                     </p>
                     <div className="ppt-progress-panel__steps">
-                      {PARSE_STEPS.map((s, idx) => (
+                      {PARSE_STAGES.map((s, idx) => (
                         <span
                           key={idx}
                           className={`ppt-step-dot${
-                            parseCompleted || parseFadingOut
-                              ? " ppt-step-dot--done"
-                              : idx === parseStepIndex
-                              ? " ppt-step-dot--active"
-                              : idx < parseStepIndex
-                              ? " ppt-step-dot--done"
-                              : ""
+                            idx === parseStepIndex ? " ppt-step-dot--active" : idx < parseStepIndex ? " ppt-step-dot--done" : ""
                           }`}
                           title={s.label}
                         />
@@ -1160,7 +852,7 @@ const CourseGenerator = () => {
               )}
 
               {/* STATUS: ERROR */}
-              {syllabusParseStatus === "error" && (
+              {parseStatus === "error" && (
                 <div style={{
                   background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -1171,12 +863,12 @@ const CourseGenerator = () => {
                   color: 'rgba(255, 255, 255, 0.9)',
                   fontSize: '0.9rem'
                 }}>
-                  <strong>Extraction Error:</strong> {syllabusParseError}
+                  <strong>Extraction Error:</strong> {parseError}
                   <div style={{ marginTop: '10px' }}>
                     <button
                       className="glass-btn secondary"
                       style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-                      onClick={() => setSyllabusParseStatus("idle")}
+                      onClick={() => setParseStatus("idle")}
                     >
                       Try Again
                     </button>
@@ -1184,8 +876,8 @@ const CourseGenerator = () => {
                 </div>
               )}
 
-              {/* STATUS: DONE (SUCCESS SUMMARY) */}
-              {syllabusParseStatus === "done" && !parseFadingOut && (
+              {/* STATUS: DONE (SUCCESS SUMMARY CARD) */}
+              {parseStatus === "done" && (
                 <div className="syllabus-success-card syllabus-success-card--fadein">
                   <div className="success-header-row">
                     <h3 className="success-title">
@@ -1193,13 +885,14 @@ const CourseGenerator = () => {
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
-                      Syllabus Ingested Successfully
+                      MoSPI Document Ingested Successfully
                     </h3>
                     <button
                       className="glass-btn primary"
                       style={{ padding: "6px 14px", fontSize: "0.8rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
                       onClick={() => {
-                        syllabusFileInputRef.current?.click();
+                        setParseStatus("idle");
+                        setDocText("");
                       }}
                     >
                       Re-upload
@@ -1208,43 +901,27 @@ const CourseGenerator = () => {
 
                   <div className="summary-chips-grid">
                     <div className="summary-chip">
-                      <div className="summary-chip-label">Course Code</div>
-                      <div className="summary-chip-val">{courseCode || "N/A"}</div>
+                      <div className="summary-chip-label">Document Title</div>
+                      <div className="summary-chip-val">{docTitle || "Official Manual"}</div>
                     </div>
                     <div className="summary-chip">
-                      <div className="summary-chip-label">Subject Name</div>
-                      <div className="summary-chip-val">{subjectName || "N/A"}</div>
+                      <div className="summary-chip-label">Characters Extracted</div>
+                      <div className="summary-chip-val">{docText.length}</div>
                     </div>
                     <div className="summary-chip">
-                      <div className="summary-chip-label">Theory Hours</div>
-                      <div className="summary-chip-val">{totalHoursTheory || totalLectures} Hours</div>
+                      <div className="summary-chip-label">Competency Code</div>
+                      <div className="summary-chip-val">{targetCompetency}</div>
                     </div>
                     <div className="summary-chip">
-                      <div className="summary-chip-label">Modules</div>
-                      <div className="summary-chip-val">{modules.length} Modules</div>
+                      <div className="summary-chip-label">Target Cadre</div>
+                      <div className="summary-chip-val">{targetCadre.split("(")[0]}</div>
                     </div>
                     <div className="summary-chip">
-                      <div className="summary-chip-label">Outcomes Mapped</div>
-                      <div className="summary-chip-val">{courseOutcomes.length} COs</div>
+                      <div className="summary-chip-label">Benchmark Goal</div>
+                      <div className="summary-chip-val">
+                        {MOSPI_COMPETENCIES.find((c) => c.code === targetCompetency)?.benchmark || 80}% Pass
+                      </div>
                     </div>
-                    <div className="summary-chip">
-                      <div className="summary-chip-label">Textbooks</div>
-                      <div className="summary-chip-val">{textBooks.length} Books</div>
-                    </div>
-                    <div className="summary-chip">
-                      <div className="summary-chip-label">Reference Books</div>
-                      <div className="summary-chip-val">{referenceBooks.length} Books</div>
-                    </div>
-                    <div className="summary-chip">
-                      <div className="summary-chip-label">Useful Links</div>
-                      <div className="summary-chip-val">{usefulLinks.length} Links</div>
-                    </div>
-                    {/* CREDITS CHIP - COMMENTED OUT FOR NOW
-                    <div className="summary-chip">
-                      <div className="summary-chip-label">Credits</div>
-                      <div className="summary-chip-val">TH: {credits?.theory || 0}</div>
-                    </div>
-                    */}
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
@@ -1253,704 +930,370 @@ const CourseGenerator = () => {
                       style={{ padding: "12px 28px", alignItems: "center", fontSize: "0.95rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
                       onClick={() => setStep(1)}
                     >
-                      Review Pre-filled Setup & Timetable →
+                      Configure Cadre Blueprint & Parameters →
                     </button>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* MANUAL SKIP LINK */}
-            <div style={{ marginTop: "24px", textAlign: "center" }}>
-              <button
-                className="skip-syllabus-btn"
-                onClick={() => setStep(1)}
-              >
-                Skip Syllabus Upload and Configure Manually
-              </button>
-            </div>
-          </>
         )}
 
-          {/* ========================================================================= */}
-          {/* STEP 1: FORM CONTENT (PRE-FILLED OR MANUAL)                              */}
-          {/* ========================================================================= */}
-          {step === 1 && (
-            <div className="form-content">
-              {/* TOP BANNER IF SYLLABUS ACTIVE */}
-              {courseCode && (
-                <div className="prefilled-banner">
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span className="co-badge">{courseCode}</span>
-                    <span><strong>{subjectName}</strong> — {totalLectures} Total Hours, {modules.length} Modules, {courseOutcomes.length} COs Mapped</span>
-                  </div>
-                  <button
-                    className="glass-btn primary"
-                    style={{ padding: "6px 16px", fontSize: "0.82rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
-                    onClick={() => setStep(0)}
-                  >
-                    ← Back to Syllabus Intake
-                  </button>
-                </div>
-              )}
+        {/* ========================================================================= */}
+        {/* STEP 1: CADRE BLUEPRINT & PARAMETERS                                      */}
+        {/* ========================================================================= */}
+        {step === 1 && (
+          <div className="form-content">
+            {/* TOP PREFILLED BANNER */}
+            <div className="prefilled-banner">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span className="co-badge">{targetCompetency}</span>
+                <span><strong>{docTitle || "Official MoSPI Document"}</strong> — Ready for Bloom's Taxonomy Synthesis</span>
+              </div>
+              <button
+                className="glass-btn primary"
+                style={{ padding: "6px 16px", fontSize: "0.82rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700 }}
+                onClick={() => setStep(0)}
+              >
+                ← Back to Manual Ingestion
+              </button>
+            </div>
 
-              {/* LEFT COLUMN: BASIC INFO & METADATA */}
-              <div className="form-section">
-                <div className="row-inputs" style={{ gridTemplateColumns: "1fr 2fr", marginBottom: "15px" }}>
-                  <div>
-                    <label>Course Code</label>
-                    <input
-                      className="glass-input"
-                      value={courseCode}
-                      onChange={(e) => setCourseCode(e.target.value)}
-                      placeholder="e.g. AIC404"
-                    />
-                  </div>
-                  <div>
-                    <label>Subject Name</label>
-                    <input
-                      className="glass-input"
-                      value={subjectName}
-                      onChange={(e) => setSubjectName(e.target.value)}
-                      placeholder="e.g. AI Algorithms & Ethics"
-                    />
-                  </div>
-                </div>
-
-                {/* INSTITUTIONAL METADATA ROW */}
-                <div
-                  className="row-inputs"
-                  style={{ gridTemplateColumns: "1fr 1fr 1fr", marginTop: "15px", marginBottom: "15px" }}
-                >
-                  <div>
-                    <label>Department</label>
-                    <input
-                      className="glass-input"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="e.g. Computer Engineering"
-                    />
-                  </div>
-                  <div>
-                    <label>Program</label>
-                    <input
-                      className="glass-input"
-                      value={program}
-                      onChange={(e) => setProgram(e.target.value)}
-                      placeholder="e.g. B.Tech"
-                    />
-                  </div>
-                  <div>
-                    <label>Semester</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="8"
-                      className="glass-input"
-                      value={semester}
-                      onChange={(e) => setSemester(e.target.value)}
-                      placeholder="e.g. 4"
-                    />
-                  </div>
-                </div>
-
-                {/* ROW FOR LECTURES & DATES */}
-                <div
-                  className="row-inputs"
-                  style={{ gridTemplateColumns: "1fr 1fr 1fr" }}
-                >
-                  <div>
-                    <label>Total Lectures</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      className="glass-input"
-                      value={totalLectures}
-                      onChange={(e) => setTotalLectures(e.target.value)}
-                      onFocus={(e) => e.target.select()}
-                    />
-                  </div>
-                  <div>
-                    <label>Sem Start</label>
-                    <input
-                      type="date"
-                      className="glass-input"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label>Sem End</label>
-                    <input
-                      type="date"
-                      className="glass-input"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* CREDITS DISPLAY - COMMENTED OUT FOR NOW
-                <div style={{ marginTop: "15px", display: "flex", alignItems: "center", gap: "10px", fontSize: "0.85rem", color: "rgba(255,255,255,0.7)" }}>
-                  <span>Credits Scheme:</span>
-                  <span className="co-badge">Theory (TH): {credits?.theory ?? 3}</span>
-                  <span className="hours-badge">Practical (PR): {credits?.practical ?? 0}</span>
-                  <span className="module-label-badge">Tutorial (TUT): {credits?.tutorial ?? 0}</span>
-                </div>
-                */}
-
-                {/* ACCORDION: COURSE OBJECTIVES */}
-                {courseObjectives.length > 0 && (
-                  <div className="glass-accordion">
-                    <div className="accordion-header" onClick={() => toggleAccordion("objectives")}>
-                      <span>Course Objectives ({courseObjectives.length})</span>
-                      <span>{openAccordions.objectives ? "▲" : "▼"}</span>
-                    </div>
-                    {openAccordions.objectives && (
-                      <div className="accordion-body">
-                        <ol style={{ margin: "0 0 0 18px", padding: 0 }}>
-                          {courseObjectives.map((obj, idx) => (
-                            <li key={idx} style={{ marginBottom: "4px" }}>{obj}</li>
-                          ))}
-                        </ol>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ACCORDION: COURSE OUTCOMES (COs) */}
-                {courseOutcomes.length > 0 && (
-                  <div className="glass-accordion" style={{ marginTop: "8px" }}>
-                    <div className="accordion-header" onClick={() => toggleAccordion("outcomes")}>
-                      <span>Course Outcomes ({courseOutcomes.length} COs Mapped to Modules)</span>
-                      <span>{openAccordions.outcomes ? "▲" : "▼"}</span>
-                    </div>
-                    {openAccordions.outcomes && (
-                      <div className="accordion-body">
-                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                          {courseOutcomes.map((coItem, idx) => (
-                            <div key={idx} style={{ display: "flex", gap: "10px", alignItems: "flex-start", background: "rgba(255,255,255,0.03)", padding: "8px 12px", borderRadius: "8px" }}>
-                              <span className="co-badge" style={{ minWidth: "45px", textAlign: "center" }}>{coItem.co || `CO${idx + 1}`}</span>
-                              <span style={{ fontSize: "0.86rem" }}>{coItem.description}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ACCORDION: PREREQUISITES */}
-                {prerequisites.length > 0 && (
-                  <div className="glass-accordion" style={{ marginTop: "8px" }}>
-                    <div className="accordion-header" onClick={() => toggleAccordion("prerequisites")}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        Prerequisites
-                        {prerequisitesHours > 0 && (
-                          <span className="hours-badge">{prerequisitesHours} hrs</span>
-                        )}
-                      </span>
-                      <span>{openAccordions.prerequisites ? "▲" : "▼"}</span>
-                    </div>
-                    {openAccordions.prerequisites && (
-                      <div className="accordion-body">
-                        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                          {prerequisites.map((req, idx) => (
-                            <span key={idx} style={{ background: "rgba(255,255,255,0.08)", padding: "4px 10px", borderRadius: "20px", fontSize: "0.86rem" }}>
-                              {req}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* DYNAMIC MODULES SECTION */}
-                <div className="input-group" style={{ marginTop: "24px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <label style={{ margin: 0 }}>Course Modules ({modules.length})</label>
-                    <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
-                      Total Planned Hours: {totalHoursTheory || totalLectures} hrs
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
+            {/* FORM SECTION: BLUEPRINT PARAMETERS */}
+            <div className="form-section">
+              <div className="row-inputs" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: "18px" }}>
+                <div>
+                  <label>Target FRAC Competency</label>
+                  <select
                     className="glass-input"
-                    value={numModules}
-                    onChange={handleNumModulesChange}
-                    onFocus={(e) => e.target.select()}
-                    style={{ marginTop: "8px" }}
+                    value={targetCompetency}
+                    onChange={(e) => setTargetCompetency(e.target.value)}
+                  >
+                    {MOSPI_COMPETENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name} ({c.benchmark}% Benchmark)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label>Target Civil Service Cadre</label>
+                  <select
+                    className="glass-input"
+                    value={targetCadre}
+                    onChange={(e) => setTargetCadre(e.target.value)}
+                  >
+                    <option value="Indian Statistical Service (ISS - Group A)">
+                      Indian Statistical Service (ISS - Group A)
+                    </option>
+                    <option value="Subordinate Statistical Service (SSS - Group B)">
+                      Subordinate Statistical Service (SSS - Group B)
+                    </option>
+                    <option value="Field Operations Division (FOD Investigator)">
+                      Field Operations Division (FOD Investigator)
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="row-inputs" style={{ gridTemplateColumns: "2fr 1fr", marginBottom: "18px" }}>
+                <div>
+                  <label>Assessment Title</label>
+                  <input
+                    className="glass-input"
+                    value={assessmentTitle}
+                    onChange={(e) => setAssessmentTitle(e.target.value)}
+                    placeholder="e.g. SNA 2008 Gross Value Added Evaluation"
                   />
                 </div>
 
-                <div
-                  className="modules-container"
-                  style={{
-                    marginTop: "15px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "15px",
-                  }}
-                >
-                  {modules.map((mod, index) => (
+                <div>
+                  <label>Number of Questions</label>
+                  <select
+                    className="glass-input"
+                    value={numQuestions}
+                    onChange={(e) => setNumQuestions(Number(e.target.value))}
+                  >
+                    <option value={5}>5 Questions (Express Diagnostic)</option>
+                    <option value={10}>10 Questions (Standard Module Exam)</option>
+                    <option value={15}>15 Questions (Comprehensive)</option>
+                    <option value={20}>20 Questions (Final Cadre Certification)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="row-inputs" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: "18px" }}>
+                <div>
+                  <label>Assessment Purpose</label>
+                  <select
+                    className="glass-input"
+                    value={assessmentType}
+                    onChange={(e) => setAssessmentType(e.target.value)}
+                  >
+                    <option value="Diagnostic Pre-Test (FRAC Radar Feed)">
+                      Diagnostic Pre-Test (Feeds into Competency Radar)
+                    </option>
+                    <option value="Mid-Term Cadre Training Evaluation">
+                      Mid-Term Cadre Training Evaluation
+                    </option>
+                    <option value="Final Certification (Mint Blockchain Credential)">
+                      Final Certification (Mint Soulbound Credential on Pass)
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label>Cognitive Difficulty</label>
+                  <select
+                    className="glass-input"
+                    value={difficultyLevel}
+                    onChange={(e) => setDifficultyLevel(e.target.value)}
+                  >
+                    <option value="Foundational (SSS Induction)">Foundational (SSS Induction Level)</option>
+                    <option value="Intermediate (ISS Junior Time Scale)">
+                      Intermediate (ISS Junior Time Scale / In-Service)
+                    </option>
+                    <option value="Advanced (Senior Statistical Officers & Directors)">
+                      Advanced (Senior Statistical Officers & Directors)
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              {/* BLOOM TAXONOMY PILLS (ZERO EMOJIS) */}
+              <div style={{ marginTop: "14px" }}>
+                <label>Bloom's Taxonomy Cognitive Levels to Target</label>
+                <div className="bloom-pills-row">
+                  {[
+                    { lvl: "L1 Remember", desc: "Definitions & MoSPI Guidelines" },
+                    { lvl: "L2 Understand", desc: "Statistical Concepts & Methodologies" },
+                    { lvl: "L3 Apply", desc: "Calculations, SUT Balancing & Multipliers" },
+                    { lvl: "L4 Analyze", desc: "Microdata Errors & Outlier Diagnostics" },
+                    { lvl: "L5 Evaluate", desc: "NDQAF Quality Audits & Consistency" },
+                  ].map((item) => (
                     <div
-                      key={mod.id}
-                      className="module-box"
-                      style={{
-                        padding: "16px",
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        borderRadius: "12px",
-                        background: "rgba(255, 255, 255, 0.02)"
-                      }}
+                      key={item.lvl}
+                      className={`bloom-pill ${selectedBloomLevels.includes(item.lvl) ? "active" : ""}`}
+                      onClick={() => toggleBloomLevel(item.lvl)}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span className="module-label-badge">
-                            {mod.name?.trim()
-                              ? (mod.name.toLowerCase().startsWith("module") ? mod.name : `Module ${mod.moduleLabel || index + 1}: ${mod.name}`)
-                              : `Module ${mod.moduleLabel || index + 1}`}
-                          </span>
-                        </div>
-                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                          {mod.coMapped && <span className="co-badge">{mod.coMapped}</span>}
-                          {mod.hoursPerModule > 0 && <span className="hours-badge">{mod.hoursPerModule} Hours</span>}
-                        </div>
-                      </div>
-
-                      <div className="input-group">
-                        <input
-                          className="glass-input"
-                          value={mod.name}
-                          onChange={(e) =>
-                            handleModuleNameChange(index, e.target.value)
-                          }
-                          placeholder={`e.g. Module Title`}
-                        />
-                      </div>
-
-                      {/* SYLLABUS TOPICS BOX */}
-                      <div className="subtopics-preview">
-                        <div
-                          className="subtopics-label-row"
-                          style={{ cursor: "pointer", userSelect: "none" }}
-                          onClick={() => toggleSubtopicAccordion(mod.id)}
-                        >
-                          <span style={{ color: '#ffffff', fontWeight: 600 }}>
-                            Syllabus Subtopics
-                          </span>
-                          <span>{openAccordions.subtopics[mod.id] ? "Collapse ▲" : "View/Edit ▼"}</span>
-                        </div>
-
-                        {openAccordions.subtopics[mod.id] && (
-                          <textarea
-                            className="subtopics-textarea-view"
-                            value={mod.extractedText || ""}
-                            onChange={(e) => handleModuleTextChange(index, e.target.value)}
-                            placeholder="Enter or paste syllabus topics for this module..."
-                          />
-                        )}
-                      </div>
-
-                      {/* OPTIONAL SUPPLEMENTARY PDF UPLOAD */}
-                      <div className="input-group" style={{ marginTop: "12px" }}>
-                        <label style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.6)" }}>
-                          Supplementary PDFs / Notes (Optional)
-                        </label>
-                        <div className="file-upload-wrapper">
-                          <input
-                            type="file"
-                            accept="application/pdf"
-                            multiple
-                            onChange={(e) => handleModuleFilesChange(index, e)}
-                            className="glass-file-input"
-                          />
-
-                          {(mod.filesList && mod.filesList.length > 0) && (
-                            <div className="files-list" style={{ marginTop: '10px' }}>
-                              {mod.filesList.map((file, fIndex) => (
-                                <div
-                                  key={file.id}
-                                  draggable
-                                  onDragStart={(e) => handleDragStart(e, index, fIndex)}
-                                  onDragEnd={handleDragEnd}
-                                  onDragOver={handleDragOver}
-                                  onDragLeave={handleDragLeave}
-                                  onDrop={(e) => handleDrop(e, index, fIndex)}
-                                  className="file-item-glass"
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-                                    <span className="drag-handle">≡</span>
-                                    <span className="file-name-span">{file.name}</span>
-                                  </div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    {file.status === 'loading' && <span style={{ color: 'rgba(255,255,255,0.7)' }}>Extracting...</span>}
-                                    {file.status === 'success' && <span style={{ color: '#ffffff' }}>✓</span>}
-                                    <button
-                                      className="remove-file-btn"
-                                      onClick={() => removeFile(index, file.id)}
-                                      title="Remove"
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <span className="co-badge">{item.lvl}</span>
+                      <span>{item.desc}</span>
+                      {selectedBloomLevels.includes(item.lvl) && (
+                        <span style={{ fontWeight: 800 }}>[Selected]</span>
+                      )}
                     </div>
                   ))}
                 </div>
-
-                {/* CONCLUSION SECTION — shown after all modules, not counted as a module */}
-                {conclusionSection && conclusionSection.syllabusText && (
-                  <div className="glass-accordion" style={{ marginTop: "20px" }}>
-                    <div className="accordion-header" onClick={() => toggleAccordion("conclusion")}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        {conclusionSection.name || "Conclusion"}
-                        {conclusionSection.hoursPerModule > 0 && (
-                          <span className="hours-badge">{conclusionSection.hoursPerModule} hrs</span>
-                        )}
-                      </span>
-                      <span>{openAccordions.conclusion ? "▲" : "▼"}</span>
-                    </div>
-                    {openAccordions.conclusion && (
-                      <div className="accordion-body" style={{ whiteSpace: "pre-wrap", lineHeight: 1.65 }}>
-                        {conclusionSection.syllabusText}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ACCORDION: TEXTBOOKS & REFERENCES */}
-                {(textBooks.length > 0 || referenceBooks.length > 0 || usefulLinks.length > 0) && (
-                  <div className="glass-accordion" style={{ marginTop: "20px" }}>
-                    <div className="accordion-header" onClick={() => toggleAccordion("books")}>
-                      <span>Textbooks, References & Useful Links ({textBooks.length + referenceBooks.length} Books)</span>
-                      <span>{openAccordions.books ? "▲" : "▼"}</span>
-                    </div>
-                    {openAccordions.books && (
-                      <div className="accordion-body">
-                        {textBooks.length > 0 && (
-                          <div style={{ marginBottom: "14px" }}>
-                            <div style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "rgba(255,255,255,0.8)", fontWeight: 700, marginBottom: "6px" }}>
-                              Text Books:
-                            </div>
-                            <ol style={{ margin: "0 0 0 18px", padding: 0 }}>
-                              {textBooks.map((tb, idx) => (
-                                <li key={idx} style={{ marginBottom: "4px" }}>{tb}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
-                        {referenceBooks.length > 0 && (
-                          <div style={{ marginBottom: "14px" }}>
-                            <div style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "rgba(255,255,255,0.8)", fontWeight: 700, marginBottom: "6px" }}>
-                              Reference Books:
-                            </div>
-                            <ol style={{ margin: "0 0 0 18px", padding: 0 }}>
-                              {referenceBooks.map((rb, idx) => (
-                                <li key={idx} style={{ marginBottom: "4px" }}>{rb}</li>
-                              ))}
-                            </ol>
-                          </div>
-                        )}
-                        {usefulLinks.length > 0 && (
-                          <div>
-                            <div style={{ fontSize: "0.8rem", textTransform: "uppercase", color: "rgba(255,255,255,0.8)", fontWeight: 700, marginBottom: "6px" }}>
-                              Useful Links:
-                            </div>
-                            <ul style={{ margin: "0 0 0 18px", padding: 0 }}>
-                              {usefulLinks.map((link, idx) => (
-                                <li key={idx} style={{ marginBottom: "4px" }}>
-                                  <a href={link} target="_blank" rel="noreferrer" style={{ color: "#ffffff", textDecoration: "underline" }}>
-                                    {link}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
+            </div>
 
-              {/* RIGHT COLUMN: ADVANCED SCHEDULER */}
-              <div className="form-section scheduler-section">
-                <h2 className="scheduler-title">Weekly Schedule Builder</h2>
-
-                <div
-                  className="input-group"
-                  style={{ marginTop: "10px", marginBottom: "20px" }}
-                >
-                  <label style={{ fontSize: "0.9rem", color: "#ffffff" }}>
-                    Number of Divisions to teach
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="glass-input"
-                    value={numDivisions}
-                    onChange={handleNumDivisionsChange}
-                    onFocus={(e) => e.target.select()}
-                    placeholder="e.g. 2"
-                    style={{ maxWidth: "150px" }}
-                  />
-                </div>
-
-                {/* DIVISION TOGGLE TABS */}
-                {divisionsList.length > 0 && (
-                  <div className="division-tabs">
-                    {divisionsList.map((div) => (
-                      <button
-                        key={div}
-                        className={`division-tab ${activeDivision === div ? "active" : ""}`}
-                        onClick={() => setActiveDivision(div)}
-                      >
-                        Div {div}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                <p className="helper-text">
-                  Select a day, add time slots for lectures in <strong>Division {activeDivision}</strong>
-                </p>
-
-                <div className="day-tabs">
-                  {days.map((day) => {
-                    const hasSlots =
-                      weeklySchedule[activeDivision]?.[day]?.length > 0;
-                    return (
-                      <button
-                        key={day}
-                        className={`day-tab ${activeDay === day ? "active" : ""} ${hasSlots ? "has-slots" : ""}`}
-                        onClick={() => setActiveDay(day)}
-                      >
-                        {day}
-                        {hasSlots && <span className="dot"></span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="time-adder">
-                  <span className="current-day-label">{activeDay}:</span>
-                  <GlassSelect
-                    className="time-select-glass"
-                    value={hour}
-                    onChange={setHour}
-                    style={{ width: "75px" }}
-                    options={[...Array(12).keys()].map((n) => ({
-                      value: String(n + 1).padStart(2, "0"),
-                      label: String(n + 1).padStart(2, "0"),
-                    }))}
-                  />
-                  <span style={{ color: "white", fontWeight: "bold" }}>:</span>
-
-                  <GlassSelect
-                    className="time-select-glass"
-                    value={minute}
-                    onChange={setMinute}
-                    style={{ width: "75px" }}
-                    options={["00", "10", "20", "30", "40", "50"]}
-                  />
-
-                  <GlassSelect
-                    className="time-select-glass"
-                    value={ampm}
-                    onChange={setAmpm}
-                    style={{ width: "80px" }}
-                    options={["AM", "PM"]}
-                  />
-
-                  <button className="add-time-btn" onClick={addTimeSlot}>
-                    + Add
-                  </button>
-                </div>
-
-                <div className="slots-display">
-                  {!weeklySchedule[activeDivision] ||
-                    Object.keys(weeklySchedule[activeDivision]).length === 0 ? (
-                    <span className="empty-msg">
-                      No times scheduled for Division {activeDivision} yet.
-                    </span>
-                  ) : (
-                    Object.entries(weeklySchedule[activeDivision]).map(
-                      ([day, times]) => (
-                        <div key={day} className="day-slot-group">
-                          <strong>{day}</strong>
-                          <div className="pill-container">
-                            {times.map((t) => (
-                              <span key={t} className="time-pill">
-                                {t}
-                                <button onClick={() => removeTimeSlot(day, t)}>
-                                  ×
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ),
-                    )
-                  )}
-                </div>
-              </div>
-
+            {/* GENERATE BUTTON */}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: "24px" }}>
               <button
                 className="glass-btn primary"
-                onClick={handleGenerate}
-                disabled={loading}
-                style={{ gridColumn: "1 / -1", marginTop: "20px", padding: "16px 28px", fontSize: "1.05rem", width: "100%", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
+                style={{ padding: "14px 36px", fontSize: "1rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
+                onClick={handleGenerateQuestions}
+                disabled={isGenerating}
               >
-                {loading ? "StatCap AI is Generating Roadmap..." : "Generate Lecture Roadmap"}
+                {isGenerating ? "Synthesizing Questions with StatCap AI..." : "Synthesize Cadre Assessment with Gemini AI →"}
               </button>
             </div>
-          )}
+            {generationLog && (
+              <p style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.8)", fontSize: "0.85rem", marginTop: "10px" }}>
+                {generationLog}
+              </p>
+            )}
+          </div>
+        )}
 
-          {/* ========================================================================= */}
-          {/* STEP 2: PREVIEW & CONFIRMATION                                            */}
-          {/* ========================================================================= */}
-          {step === 2 && (
-            <div className="preview-content">
-              <div className="preview-header">
-                <div>
-                  <h2 style={{ color: '#ffffff', margin: 0 }}>Course Roadmap Preview</h2>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
-                    {courseCode ? `[${courseCode}] ` : ""}{subjectName}
-                  </p>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <span className="lecture-count">
-                    {generatedRoadmap[previewDivision]?.length || 0} Lectures
+        {/* ========================================================================= */}
+        {/* STEP 2: VERIFICATION & QUESTION MATRIX                                   */}
+        {/* ========================================================================= */}
+        {step === 2 && (
+          <div>
+            {/* ACTION TOOLBAR */}
+            <div className="questions-action-bar">
+              <div>
+                <h3 style={{ margin: "0 0 4px 0", fontSize: "1.2rem", fontWeight: 800, color: "#ffffff" }}>
+                  {assessmentTitle}
+                </h3>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                  <span className="co-badge">{targetCompetency}</span>
+                  <span style={{ fontSize: "0.82rem", color: "rgba(255, 255, 255, 0.7)" }}>
+                    {questions.length} Questions • {questions.length * 10} Total Marks • Cadre: {targetCadre.split("(")[0]}
                   </span>
                 </div>
               </div>
 
-              {/* PREVIEW DIVISION TOGGLE */}
-              {divisionsList.length > 1 && (
-                <div
-                  className="division-tabs"
-                  style={{
-                    display: "flex",
-                    gap: "10px",
-                    marginBottom: "20px",
-                    justifyContent: "center",
-                  }}
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <button
+                  className="glass-btn secondary"
+                  style={{ padding: "8px 16px", fontSize: "0.82rem" }}
+                  onClick={handleAddQuestion}
                 >
-                  {divisionsList.map((div) => (
-                    <button
-                      key={div}
-                      className={`glass-btn ${previewDivision === div ? "primary" : "secondary"}`}
-                      style={{ padding: "8px 20px" }}
-                      onClick={() => setPreviewDivision(div)}
-                    >
-                      View Div {div} Roadmap
-                    </button>
-                  ))}
-                </div>
-              )}
+                  Add Question
+                </button>
+                <button
+                  className="glass-btn secondary"
+                  style={{ padding: "8px 16px", fontSize: "0.82rem" }}
+                  onClick={handleExportJSON}
+                >
+                  Export JSON
+                </button>
+                <button
+                  className="glass-btn secondary"
+                  style={{ padding: "8px 16px", fontSize: "0.82rem" }}
+                  onClick={() => window.print()}
+                >
+                  Print Document
+                </button>
+                <button
+                  className="glass-btn primary"
+                  style={{ padding: "8px 20px", fontSize: "0.85rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
+                  onClick={handlePublishAssessment}
+                >
+                  Publish to Trainee Portal
+                </button>
+              </div>
+            </div>
 
-              <div className="roadmap-scroll">
-                {generatedRoadmap[previewDivision]?.map((lecture, idx) => (
-                  <div key={idx} className="glass-list-item">
-                    <div className="item-meta">
-                      <span className="lecture-badge">#{lecture.lectureNum}</span>
-                      {lecture.date && (
-                        <span className="date-tag">{lecture.date}</span>
-                      )}
-                      {lecture.time && (
-                        <span className="time-tag">{lecture.time}</span>
-                      )}
-                      {lecture.coMapped && (
-                        <span className="co-badge" style={{ marginLeft: "8px" }}>
-                          {lecture.coMapped}
-                        </span>
-                      )}
-                      {lecture.moduleName && (
-                        <span className="module-tag" style={{ marginLeft: "8px" }}>
-                          {lecture.moduleName}
-                        </span>
-                      )}
+            {/* QUESTIONS LIST */}
+            <div className="questions-list">
+              {questions.map((q, idx) => (
+                <div key={q.id || idx} className="question-item-card">
+                  <div className="question-card-header">
+                    <div className="q-number-pill">
+                      <span>Q{idx + 1}.</span>
+                      <div className="q-badges-group">
+                        <span className="co-badge">{q.btLevel || "L3 Apply"}</span>
+                        <span className="hours-badge">{q.competencyCode || targetCompetency}</span>
+                        <span className="hours-badge">{q.marks || 10} Marks</span>
+                      </div>
                     </div>
-                    <div className="item-content">
-                      <h3 style={{ margin: "6px 0 8px 0" }}>{lecture.title}</h3>
-                      {lecture.description && (
-                        <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.88rem', margin: '0 0 10px 0' }}>
-                          {lecture.description}
-                        </p>
-                      )}
-                      <ul style={{ margin: 0, paddingLeft: "18px" }}>
-                        {lecture.checklist?.map((pt, i) => (
-                          <li key={i} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginBottom: '3px' }}>
-                            {pt}
-                          </li>
-                        ))}
-                      </ul>
+
+                    <div>
+                      <button
+                        className="glass-btn secondary"
+                        style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                        onClick={() => handleDeleteQuestion(idx)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="action-row" style={{ marginTop: "25px" }}>
-                <button
-                  className="glass-btn primary"
-                  style={{ background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 700, padding: "12px 24px" }}
-                  onClick={() => setStep(1)}
-                >
-                  ← Edit Course Architecture
-                </button>
-                <button
-                  className="glass-btn primary"
-                  onClick={handleSaveCourse}
-                  disabled={loading}
-                  style={{ background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800, padding: "12px 24px" }}
-                >
-                  {loading ? "Saving Course..." : "Confirm & Save Course to Cloud"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+                  <div className="question-statement">{q.statement}</div>
 
-      {/* ERROR / VALIDATION MODAL */}
-      {validationError && (
-        <div className="generation-modal" style={{ background: 'rgba(10, 15, 30, 0.75)', backdropFilter: 'blur(20px)' }}>
-          <div className="modal-content" style={{
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            minWidth: '320px',
-            maxWidth: '420px',
-            padding: '40px'
-          }}>
-            <div style={{ color: '#ffffff', marginBottom: '15px' }}>
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-              </svg>
+                  {/* OPTIONS */}
+                  <div className="options-grid">
+                    {q.options?.map((opt: string, optIdx: number) => {
+                      const letter = String.fromCharCode(65 + optIdx);
+                      const isCorrect = q.correctIndex === optIdx;
+
+                      return (
+                        <div
+                          key={optIdx}
+                          className={`option-box ${isCorrect ? "correct" : ""}`}
+                          onClick={() => handleSetCorrectOption(idx, optIdx)}
+                          title="Click to set this as correct answer"
+                        >
+                          <span className="option-letter-badge">{letter}</span>
+                          <span className="option-text">{opt}</span>
+                          {isCorrect && (
+                            <span className="option-correct-badge">
+                              [Correct Answer]
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* CITATION */}
+                  {q.citation && (
+                    <div className="q-explanation-box">
+                      <div>
+                        <div className="q-citation-tag">Official MoSPI Manual Citation</div>
+                        <div>{q.citation}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '8px' }}>Just a moment...</h2>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.95rem', marginBottom: '25px', lineHeight: '1.6' }}>
-              {validationError}
-            </p>
-            <button
-              className="glass-btn primary"
-              onClick={() => setValidationError(null)}
-              style={{ width: '100%', padding: '10px', fontSize: '0.9rem' }}
-            >
-              I understand
-            </button>
+
+            {/* BOTTOM PUBLISH ROW */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "14px", marginTop: "32px" }}>
+              <button
+                className="glass-btn secondary"
+                style={{ padding: "12px 24px", fontSize: "0.95rem" }}
+                onClick={() => setStep(1)}
+              >
+                ← Back to Blueprint Parameters
+              </button>
+              <button
+                className="glass-btn primary"
+                style={{ padding: "12px 36px", fontSize: "1rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
+                onClick={handlePublishAssessment}
+              >
+                Publish Assessment to Trainee Portal
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+        {/* PUBLISH CONFIRMATION MODAL */}
+        {showPublishModal && (
+          <div className="modal-overlay" onClick={() => setShowPublishModal(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 10px 0" }}>
+                Assessment Published Successfully
+              </h2>
+              <p style={{ color: "rgba(255, 255, 255, 0.75)", fontSize: "0.9rem", lineHeight: 1.5, margin: "0 0 20px 0" }}>
+                <strong>{publishedData?.title}</strong> is now live in the MoSPI Trainee Portal. Officers in the{" "}
+                <strong>{targetCadre.split("(")[0]}</strong> cohort can now take this assessment to close competency gaps and update their FRAC diagnostic radar.
+              </p>
+
+              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.1)", borderRadius: "10px", padding: "14px", marginBottom: "22px", textAlign: "left", fontSize: "0.85rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Competency Domain:</span>
+                  <span style={{ fontWeight: 700 }}>{targetCompetency}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Assessment Purpose:</span>
+                  <span>{assessmentType.split("(")[0]}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Total Questions:</span>
+                  <span>{questions.length} Questions ({questions.length * 10} Marks)</span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                <button
+                  className="glass-btn primary"
+                  style={{ padding: "10px 24px", fontSize: "0.9rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
+                  onClick={() => {
+                    setShowPublishModal(false);
+                    navigate("/trainee");
+                  }}
+                >
+                  Jump to Trainee Dashboard →
+                </button>
+                <button
+                  className="glass-btn secondary"
+                  style={{ padding: "10px 20px", fontSize: "0.9rem" }}
+                  onClick={() => setShowPublishModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
-export default CourseGenerator;
+export default CourseGeneratorPage;

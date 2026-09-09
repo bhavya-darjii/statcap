@@ -32,6 +32,7 @@ import QuestionBankPage from './pages/instructor/QuestionBankPage';
 import ExaminationPage from './pages/instructor/ExaminationPage';
 import ExaminationEditor from './pages/instructor/ExaminationEditor';
 import CourseGeneratorPage from './pages/instructor/CourseGeneratorPage';
+import AssessmentGeneratorPage from './pages/instructor/AssessmentGeneratorPage';
 import LectureOverview from './pages/instructor/LectureOverview';
 import CourseAnalytics from './pages/instructor/CourseAnalytics';
 import InstructorProfile from './pages/instructor/InstructorProfile';
@@ -74,7 +75,7 @@ function App() {
           .from('users')
           .select('user_type')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
         if (userData?.user_type) docRole = userData.user_type;
       } catch (e) { /* fallback */ }
 
@@ -150,7 +151,7 @@ function App() {
                     <InstructorLayout />
                   </ProtectedRoute>
                 }>
-                  <Route index element={<InstructorHome />} />
+                  <Route index element={<Navigate to="/instructor/create-course" replace />} />
                   <Route path="lesson-plan" element={<LessonPlanPage />} />
                   <Route path="question-bank" element={<QuestionBankPage />} />
                   <Route path="examination" element={<ExaminationPage />} />
@@ -166,6 +167,7 @@ function App() {
                   <Route path="trainee-analytics" element={<TraineeAnalytics />} />
                   <Route path="trainee-risk" element={<TraineeAnalytics />} />
                   <Route path="create-course" element={<CourseGeneratorPage />} />
+                  <Route path="assessment-generator" element={<AssessmentGeneratorPage />} />
                 </Route>
 
                 {/* ── MoSPI Directorate ── */}

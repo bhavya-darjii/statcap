@@ -41,13 +41,23 @@ const ALLOWED_ORIGINS: string[] = [
   'http://localhost:5173',
   'https://localhost:5173',
   'http://localhost:5174',
+  'https://localhost:5174',
+  'http://localhost:5175',
+  'https://localhost:5175',
+  'http://localhost:3000',
+  'https://localhost:3000',
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.vercel.app')) {
+    if (
+      ALLOWED_ORIGINS.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+    ) {
       return callback(null, true);
     }
     return callback(new Error(`CORS policy violation: origin ${origin} is not allowed.`));

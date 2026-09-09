@@ -417,7 +417,7 @@ const StatCapAdminDashboard = () => {
         <div className="va-charts-grid">
           <div className="va-chart-card">
             <p className="va-chart-title">Users & Courses by Institution</p>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={240} minWidth={0}>
               <BarChart data={collegesChartData} barCategoryGap="30%">
                 <XAxis dataKey="name" tick={{ fill: 'rgba(255, 255, 255, 0.7)', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: 'rgba(255, 255, 255, 0.7)', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -429,7 +429,7 @@ const StatCapAdminDashboard = () => {
           </div>
           <div className="va-chart-card">
             <p className="va-chart-title">Role Distribution</p>
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={240} minWidth={0}>
               <PieChart>
                 <Pie
                   data={roleDistribution}

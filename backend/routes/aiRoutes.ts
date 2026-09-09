@@ -13,6 +13,7 @@ import {
   classifyCopilotIntent,
   generateLecturePresentation,
   parseSyllabus,
+  generateMospiAssessment,
 } from '../controllers/aiController.js';
 import {
   generateRubric,
@@ -46,5 +47,7 @@ router.post('/generate-lab-manual',         generateLabManual);
 router.post('/intent',                      classifyCopilotIntent);
 router.post('/generate-lecture-presentation', generateLecturePresentation);
 router.post('/parse-syllabus',               parseSyllabus);
+router.post('/generate-mospi-assessment',    generateMospiAssessment);
+
 
 export default router;

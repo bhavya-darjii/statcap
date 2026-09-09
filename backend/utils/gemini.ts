@@ -12,9 +12,12 @@
 
 import { GoogleGenAI, type GenerateContentParameters } from '@google/genai';
 
-const PRIMARY_MODEL = 'gemini-3.8-flash';
-const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'];
+const PRIMARY_MODEL = 'gemini-3.6-flash';
+const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.8-flash'];
 const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS];
+
+// Blacklist dead or unauthenticated keys in memory so they never waste request time
+const deadKeys = new Set<string>();
 
 // Parse keys into an array of { email, key, client } objects
 const rawKeys = (process.env.GOOGLE_API_KEYS || process.env.GOOGLE_API_KEY || '').split(',');
@@ -35,7 +38,7 @@ const API_KEYS = rawKeys
 if (API_KEYS.length === 0) {
   console.warn('[gemini] ⚠️  GOOGLE_API_KEYS is missing. All AI calls will fail.');
 } else {
-  console.log(`[gemini] 🚀 Initialized LRU API Pool with ${API_KEYS.length} key(s). Models: ${ALL_MODELS.join(', ')}.`);
+  console.log(`[gemini] 🚀 Initialized LRU API Pool with ${API_KEYS.length} key(s). Primary model: ${PRIMARY_MODEL}.`);
 }
 
 // Track the last time each key was used (ms) to maximize cooldowns
@@ -56,22 +59,31 @@ export const callGemini = async (bodyPayload: Record<string, unknown>): Promise<
   }
 
   let lastError: unknown;
-  const maxAttempts = 2; // Pass 1: standard; Pass 2: after brief backoff if 503 encountered
+  // 3 passes: first normal, then after a short backoff, then one final pass
+  const maxAttempts = 3;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     for (const model of ALL_MODELS) {
-      // Sort indices by LRU — pick the key that has been resting the longest
-      const sortedIndices = API_KEYS
+      // Sort indices by LRU — pick active keys only, sorted by longest resting
+      let sortedIndices = API_KEYS
         .map((_, i) => i)
+        .filter(i => !deadKeys.has(API_KEYS[i].email))
         .sort((a, b) => lastUsedTimes[a] - lastUsedTimes[b]);
 
-      let modelOverloaded = false;
+      if (sortedIndices.length === 0) {
+        // Reset dead keys if all were marked dead, to give them another chance
+        deadKeys.clear();
+        sortedIndices = API_KEYS.map((_, i) => i);
+      }
+
+      let allOverloaded = true; // Assume overloaded until a key succeeds or fails with non-503
 
       for (const keyIndex of sortedIndices) {
         const { email, client } = API_KEYS[keyIndex];
 
         // Mark this key as used right now before the request
         lastUsedTimes[keyIndex] = Date.now();
+        console.log(`[gemini] 🔑 Attempt ${attempt} | Model: ${model} | Key [${keyIndex + 1}/${sortedIndices.length}]: ${email}`);
 
         try {
           const { generationConfig, systemInstruction, contents, ...rest } = bodyPayload;
@@ -97,29 +109,43 @@ export const callGemini = async (bodyPayload: Record<string, unknown>): Promise<
             },
           };
         } catch (err: any) {
-          // 503 means the model itself is temporarily overloaded. Try next model in pool.
-          if (err?.status === 503) {
-            console.warn(`[gemini] ⚠️ Model ${model} returned 503 (Overloaded). Switching to alternative model...`);
-            modelOverloaded = true;
+          // Permanently blacklist unauthenticated or invalid keys
+          if (
+            err?.status === 400 || 
+            err?.status === 401 || 
+            err?.status === 403 ||
+            String(err?.message || '').includes('invalid authentication credentials')
+          ) {
+            deadKeys.add(email);
+            console.warn(`[gemini] ⛔ Blacklisted dead key [${email}] (status: ${err?.status})`);
             lastError = err;
-            break; // Break key loop to try alternative model
+            allOverloaded = false; // Not a 503 — this key just died
+            continue;
+          }
+
+          // 503: this specific key+model combo is overloaded — try the next key
+          if (err?.status === 503) {
+            console.warn(`[gemini] ⚠️ [${email}] on ${model} returned 503. Trying next key...`);
+            lastError = err;
+            continue; // Keep trying other keys for this same model
           }
           
+          allOverloaded = false;
           console.warn(`[gemini] ⚠️ Key for [${email}] failed on ${model}: ${err?.message || err}. Trying next key...`);
           lastError = err;
         }
       }
 
-      if (!modelOverloaded && lastError === undefined) {
-        // Successful response already returned above
-        return;
-      }
+      // If NOT all keys were overloaded on this model, no point retrying it
+      if (!allOverloaded) continue;
+      console.warn(`[gemini] ⚠️ All keys overloaded on model ${model}. Trying next model...`);
     }
 
-    // If both models were overloaded and attempt 1 failed, wait 1.2s before attempt 2
+    // All models exhausted — wait before next attempt pass
     if (attempt < maxAttempts) {
-      console.warn('[gemini] ⏳ High traffic detected across models. Waiting 1.2s before retry...');
-      await sleep(1200);
+      const waitMs = attempt === 1 ? 600 : 1500;
+      console.warn(`[gemini] ⏳ All models overloaded. Waiting ${waitMs}ms before retry attempt ${attempt + 1}...`);
+      await sleep(waitMs);
     }
   }
 

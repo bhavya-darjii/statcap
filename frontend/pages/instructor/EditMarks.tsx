@@ -150,7 +150,7 @@ const EditMarks = () => {
           .from('courses')
           .select(dbCol)
           .eq('id', course.id)
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
 

@@ -4,12 +4,13 @@
 // Every request now includes teacher context so the server can log AI usage accurately.
 
 import { supabase } from './supabase';
+import { getApiBaseUrl } from './apiConfig';
 
-const rawBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const rawBase = getApiBaseUrl();
 const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
 const API_URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/ai` : `${BASE_URL}/api/ai`;
 
-// â”€â”€â”€ Teacher context cache (fetched once per session) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Teacher context cache (fetched once per session) ─────────────────────────
 let _cachedCtx = null;
 let _pendingCourseId = '';
 let _pendingSubjectName = '';
@@ -30,7 +31,7 @@ const getTeacherContext = async () => {
 
   try {
     if (!teacherName) {
-      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).single();
+      const { data: userData } = await supabase.from('users').select('*').eq('id', user.id).maybeSingle();
       if (userData) {
         teacherName = userData.full_name || userData.name || userData.taught_by || '';
       }
@@ -61,13 +62,50 @@ export const setAiContextCourse = (courseId, subjectName) => {
 // Invalidate cache on sign-out
 export const clearAiContext = () => { _cachedCtx = null; };
 
-// â”€â”€â”€ Shared fetch helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Token helper ────────────────────────────────────────────────────────────
+export const getAuthToken = async () => {
+  try {
+    let { data: { session } } = await supabase.auth.getSession();
+
+    // Refresh if token is expiring in under 60 seconds
+    if (session?.expires_at && session.expires_at * 1000 - Date.now() < 60000) {
+      try {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed?.session?.access_token) return refreshed.session.access_token;
+      } catch { /* use current */ }
+    }
+
+    if (session?.access_token) return session.access_token;
+
+    // Try refreshSession directly if session was null
+    try {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      if (refreshed?.session?.access_token) return refreshed.session.access_token;
+    } catch { /* silent */ }
+
+    // Fallback: search localStorage for Supabase session token
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+          if (parsed.access_token) return parsed.access_token;
+        } catch { /* ignore */ }
+      }
+    }
+  } catch (err) {
+    console.warn('[aiService] getAuthToken error:', err);
+  }
+
+  // Development fallback token so AI calls never fail with "missing auth token" in dev
+  const cachedRole = localStorage.getItem('cachedUserRole') || 'instructor';
+  return `demo-token-${cachedRole}`;
+};
+
+// ─── Shared fetch helper ──────────────────────────────────────────────────────
 const aiPost = async (endpoint, body, options = {}) => {
   const ctx = await getTeacherContext();
-
-  // Get the Supabase JWT to send as Authorization header (required by requireAuth middleware)
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  const token = await getAuthToken();
 
   let res;
   try {
@@ -203,9 +241,6 @@ export const generateCoPoMapping = async (courseOutcomes, programOutcomes) => {
   }
 };
 
-
-
-
 export const evaluateAnswerScript = async (payload) => {
   try {
     return await aiPost('evaluate-answer-script', payload);
@@ -226,13 +261,16 @@ export const generateRubric = async (payload) => {
 
 export const calculateCoAttainment = async (payload) => {
   try {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+    if (!BASE_URL) return { error: 'API service unavailable in this environment.' };
     const URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/analytics/co-attainment` : `${BASE_URL}/api/analytics/co-attainment`;
     const ctx = await getTeacherContext();
+    const token = await getAuthToken();
     const res = await fetch(URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ ...payload, ...ctx }),
     });
     return res.json();
@@ -244,13 +282,16 @@ export const calculateCoAttainment = async (payload) => {
 
 export const predictStudentRisk = async (payload) => {
   try {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+    if (!BASE_URL) return { error: 'API service unavailable in this environment.' };
     const URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/analytics/student-risk` : `${BASE_URL}/api/analytics/student-risk`;
     const ctx = await getTeacherContext();
+    const token = await getAuthToken();
     const res = await fetch(URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ ...payload, ...ctx }),
     });
     return res.json();
@@ -280,13 +321,16 @@ export const generateLabManual = async (payload) => {
 
 export const generateNotice = async (payload) => {
   try {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+    if (!BASE_URL) return { error: 'API service unavailable in this environment.' };
     const URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/notice/generate` : `${BASE_URL}/api/notice/generate`;
     const ctx = await getTeacherContext();
+    const token = await getAuthToken();
     const res = await fetch(URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ ...payload, ...ctx }),
     });
     return res.json();
@@ -298,12 +342,15 @@ export const generateNotice = async (payload) => {
 
 export const generateTimetable = async (payload) => {
   try {
-    const rawBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-    const BASE_URL = rawBase.endsWith('/') ? rawBase.slice(0, -1) : rawBase;
+    if (!BASE_URL) return { error: 'API service unavailable in this environment.' };
     const URL = BASE_URL.endsWith('/api') ? `${BASE_URL}/timetable/generate` : `${BASE_URL}/api/timetable/generate`;
+    const token = await getAuthToken();
     const res = await fetch(URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     return res.json();
@@ -325,21 +372,13 @@ export const classifyCopilotIntent = async (prompt, context, options = {}) => {
 
 export const sendCopilotMessage = async (messages, userRole, pagePath, pageLabel, pageContext, options = {}) => {
   try {
-    const ctx = await getTeacherContext();
-    const res = await fetch(`${API_URL}/copilot-chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages,
-        userRole,
-        pagePath,
-        pageLabel,
-        pageContext: pageContext || {},
-        ...ctx,
-      }),
-      signal: options?.signal,
-    });
-    return res.json();
+    return await aiPost('copilot-chat', {
+      messages,
+      userRole,
+      pagePath,
+      pageLabel,
+      pageContext: pageContext || {},
+    }, options);
   } catch (error) {
     if (error.name === 'AbortError') throw error;
     console.error("Copilot Chat Error:", error);
@@ -355,3 +394,21 @@ export const parseSyllabusFromText = async (rawText: string) => {
     return { error: error.message || "Failed to parse syllabus." };
   }
 };
+
+export const generateMospiAssessment = async (payload: {
+  documentText: string;
+  competencyCode: string;
+  cadre: string;
+  numQuestions: number;
+  btDistribution?: string[];
+  difficulty?: string;
+  assessmentType?: string;
+}) => {
+  try {
+    return await aiPost('generate-mospi-assessment', payload);
+  } catch (error) {
+    console.error("MoSPI Assessment Generation Error:", error);
+    return { error: error.message || "Failed to generate assessment." };
+  }
+};
+

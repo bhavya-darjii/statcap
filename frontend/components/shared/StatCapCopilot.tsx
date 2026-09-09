@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 // @ts-nocheck
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -26,11 +26,12 @@ import { useCopilotContext } from "../../context/CopilotContext";
 import { supabase } from "../../services/supabase";
 import "./StatCapCopilot.css";
 
-const QUICK_ACTIONS = [
-  "Generate question bank",
-  "Create lesson plan",
-  "Generate exam paper",
-];
+// Quick actions commented out per product decision
+// const QUICK_ACTIONS = [
+//   "Generate question bank",
+//   "Create lesson plan",
+//   "Generate exam paper",
+// ];
 
 
 
@@ -181,7 +182,7 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
         setUserName(user.user_metadata.full_name.split(" ")[0]);
       } else {
         try {
-          const { data } = await supabase.from('users').select('full_name').eq('id', user.id).single();
+          const { data } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
           if (data && data.full_name) {
             setUserName(data.full_name.split(" ")[0]);
           }
@@ -410,9 +411,38 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
     abortControllerRef.current = new AbortController();
     const options = { signal: abortControllerRef.current.signal };
 
-    let intentRes;
+    // Instant local intent routing — 0ms overhead, avoids waiting for a redundant second LLM call
+    const lowerMsg = msg.toLowerCase();
+    const isQuestionAction = lowerMsg.includes("question bank") || lowerMsg.includes("generate question") || lowerMsg.includes("exam paper") || lowerMsg.includes("create quiz");
+    const isLessonAction = lowerMsg.includes("lesson plan") || lowerMsg.includes("generate lesson") || lowerMsg.includes("create syllabus");
+
+    if (isQuestionAction) {
+      setFlow({ type: "questions", step: 0, params: {} });
+      addMessage("assistant", FLOWS.questions[0].ask);
+      setIsTyping(false);
+      return;
+    }
+
+    if (isLessonAction) {
+      const askPrompt = typeof FLOWS.lessonplan[0].ask === "function" ? FLOWS.lessonplan[0].ask(pageContext?.course) : FLOWS.lessonplan[0].ask;
+      setFlow({ type: "lessonplan", step: 0, params: {} });
+      addMessage("assistant", askPrompt);
+      setIsTyping(false);
+      return;
+    }
+
+    // Direct conversational AI chat in 1 single fast roundtrip
+    const chatHistory = [...messages, { role: "user", content: msg }];
+    let chatRes;
     try {
-      intentRes = await classifyCopilotIntent(msg, pageContext?.course || {}, options);
+      chatRes = await sendCopilotMessage(
+        chatHistory,
+        userRole,
+        location.pathname,
+        "",
+        pageContext?.course || {},
+        options
+      );
     } catch (err) {
       if (err.name === 'AbortError') {
         addMessage("assistant", "Execution stopped.", "aborted", () => handleSend(msg));
@@ -422,50 +452,7 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
       throw err;
     }
 
-    if (intentRes.error || !intentRes.intent || intentRes.intent === "general_chat") {
-      // Use real AI chat for general responses
-      const chatHistory = [...messages, { role: "user", content: msg }];
-      let chatRes;
-      try {
-        chatRes = await sendCopilotMessage(
-          chatHistory,
-          userRole,
-          location.pathname,
-          "",
-          pageContext?.course || {},
-          options
-        );
-      } catch (err) {
-        if (err.name === 'AbortError') {
-          addMessage("assistant", "Execution stopped.", "aborted", () => handleSend(msg));
-          setIsTyping(false);
-          return;
-        }
-        throw err;
-      }
-      addMessage("assistant", chatRes.reply || chatRes.error || "Sorry, I had trouble responding.");
-      setIsTyping(false);
-      return;
-    }
-
-    const flowKey = intentRes.intent === "generate_questions" ? "questions" : "lessonplan";
-    const params = intentRes.extractedParams || {};
-
-    // Fast-path: if they provided the main parameters, skip the flow entirely
-    if (flowKey === "questions" && params.numQuestions && params.btLevels) {
-      addMessage("assistant", `Generating ${params.numQuestions} questions for ${params.btLevels}...`);
-      await runGenerate("questions", params);
-      return;
-    }
-
-    const firstStep = FLOWS[flowKey][0];
-    const question =
-      typeof firstStep.ask === "function"
-        ? firstStep.ask(pageContext?.course)
-        : firstStep.ask;
-
-    setFlow({ type: flowKey, step: 0, params });
-    addMessage("assistant", question);
+    addMessage("assistant", chatRes?.reply || chatRes?.error || "Sorry, I had trouble responding.");
     setIsTyping(false);
   };
 
@@ -478,8 +465,8 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
       ref={wrapperRef}
       className={`copilot-v2 ${isExpanded ? "copilot-v2--expanded" : ""} ${isFocused ? "copilot-v2--focused" : ""} ${showPanel ? "copilot-v2--panel-open" : ""}`}
     >
-      {/* Quick action chips */}
-      <div className={`copilot-v2__chips ${!showPanel && (isFocused || isExpanded) ? "copilot-v2__chips--visible" : ""}`}>
+      {/* Quick action chips — commented out */}
+      {/* <div className={`copilot-v2__chips ${!showPanel && (isFocused || isExpanded) ? "copilot-v2__chips--visible" : ""}`}>
         {QUICK_ACTIONS.map((action) => (
           <button
             key={action}
@@ -490,7 +477,7 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
             {action}
           </button>
         ))}
-      </div>
+      </div> */}
 
       {/* Response panel */}
       {showPanel && (

@@ -33,7 +33,7 @@ const DEFAULT_COMPETENCIES: CompetencyScore[] = [
   { code: 'BEH_ETHICS', name: 'Statistical Ethics', category: 'Behavioural', score: 92, benchmark: 90, status: 'Proficient' },
 ];
 
-export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void }> = ({ onGapSelect }) => {
+export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void; embedded?: boolean }> = ({ onGapSelect, embedded = false }) => {
   const [competencies, setCompetencies] = useState<CompetencyScore[]>(DEFAULT_COMPETENCIES);
   const [loading, setLoading] = useState(true);
 
@@ -89,42 +89,13 @@ export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void
   const developingCount = competencies.filter((c) => c.status === 'Developing').length;
   const gapCount = competencies.filter((c) => c.status === 'Gap Detected').length;
 
-  return (
-    <div
-      className="glass-card"
-      style={{
-        background: 'var(--liquid-glass-bg, rgba(10, 10, 15, 0.35))',
-        backdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
-        WebkitBackdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
-        border: '1px solid var(--liquid-glass-border, rgba(255, 255, 255, 0.1))',
-        boxShadow: 'var(--liquid-glass-shadow, 0 10px 40px -10px rgba(0, 0, 0, 0.5))',
-        borderRadius: '24px',
-        padding: '28px',
-        color: '#ffffff',
-        marginBottom: '28px',
-      }}
-    >
+  const inner = (
+    <div style={{ color: '#ffffff' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '22px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10" />
-                <line x1="12" y1="20" x2="12" y2="4" />
-                <line x1="6" y1="20" x2="6" y2="14" />
-              </svg>
-            </div>
+            
             <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, letterSpacing: '-0.3px', color: '#ffffff' }}>
               FRAC Competency Diagnostic Matrix
             </h2>
@@ -189,8 +160,8 @@ export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void
       {/* Grid: Radar Chart on Left, Detailed Breakdown on Right */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.2fr) minmax(280px, 1fr)', gap: '24px', alignItems: 'center' }}>
         {/* Radar Chart */}
-        <div style={{ width: '100%', height: '340px' }}>
-          <ResponsiveContainer width="100%" height="100%">
+        <div style={{ width: '100%', height: '340px', minWidth: 0, minHeight: 340 }}>
+          <ResponsiveContainer width="100%" height={340} minWidth={0} minHeight={340}>
             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
               <PolarGrid stroke="rgba(255, 255, 255, 0.12)" />
               <PolarAngleAxis
@@ -305,6 +276,27 @@ export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <div
+      className="glass-card"
+      style={{
+        background: 'var(--liquid-glass-bg, rgba(10, 10, 15, 0.35))',
+        backdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
+        WebkitBackdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
+        border: '1px solid var(--liquid-glass-border, rgba(255, 255, 255, 0.1))',
+        boxShadow: 'var(--liquid-glass-shadow, 0 10px 40px -10px rgba(0, 0, 0, 0.5))',
+        borderRadius: '24px',
+        padding: '28px',
+        color: '#ffffff',
+        marginBottom: '28px',
+      }}
+    >
+      {inner}
     </div>
   );
 };
