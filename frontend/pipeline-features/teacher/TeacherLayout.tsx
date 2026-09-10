@@ -8,6 +8,7 @@ import { useCopilotContext } from '../context/CopilotContext';
 import { extractGoogleAvatarUrl, cacheTeacherAvatar } from '../utils/avatarUtils';
 import { preloadCoursePresentationHistory } from '../utils/presentationHistoryUtils';
 import UnifiedLayout from './UnifiedLayout';
+import { extractFirstName } from '../utils/nameUtils';
 
 const TEACHER_GREETINGS = [
   "National Statistical Systems Training Academy (NSSTA),",
@@ -42,9 +43,9 @@ const TeacherLayout = () => {
       try {
         const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).single();
         if (userData && userData.full_name) {
-          tName = userData.full_name.split(' ')[0];
+          tName = extractFirstName(userData.full_name);
         } else if (user.user_metadata?.full_name) {
-          tName = user.user_metadata.full_name.split(' ')[0];
+          tName = extractFirstName(user.user_metadata.full_name);
         }
       } catch (error) {
         console.error("Error fetching user name:", error);

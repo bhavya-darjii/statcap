@@ -24,6 +24,7 @@ import {
 import { saveAs } from "file-saver";
 import { useCopilotContext } from "../../context/CopilotContext";
 import { supabase } from "../../services/supabase";
+import { extractFirstName } from "../../utils/nameUtils";
 import "./StatCapCopilot.css";
 
 // Quick actions commented out per product decision
@@ -179,12 +180,12 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
       if (!session) return;
       const user = session.user;
       if (user.user_metadata?.full_name) {
-        setUserName(user.user_metadata.full_name.split(" ")[0]);
+        setUserName(extractFirstName(user.user_metadata.full_name));
       } else {
         try {
           const { data } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
           if (data && data.full_name) {
-            setUserName(data.full_name.split(" ")[0]);
+            setUserName(extractFirstName(data.full_name));
           }
         } catch { }
       }
@@ -494,7 +495,9 @@ const StatCapCopilot = ({ userRole = "teacher" }) => {
                 if (isTyping && abortControllerRef.current) {
                   abortControllerRef.current.abort();
                 }
-                setShowPanel(false); 
+                setShowPanel(false);
+                setIsExpanded(false);
+                setIsFocused(false);
               }}
               aria-label="Close"
             >

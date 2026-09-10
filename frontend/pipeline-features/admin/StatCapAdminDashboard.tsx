@@ -9,6 +9,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
+import { extractFirstName } from '../../utils/nameUtils';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
   PieChart, Pie, Legend,
@@ -356,7 +357,7 @@ const StatCapAdminDashboard = () => {
          <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div className="va-header-left">
               <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>
-                Welcome to StatCap{currentUserData?.full_name ? `, ${currentUserData.full_name.split(' ')[0]}!` : '!'}
+                Welcome to StatCap{currentUserData?.full_name ? `, ${extractFirstName(currentUserData.full_name)}!` : '!'}
               </h1>
               <p style={{ color: '#ffffff', fontSize: '1.05rem', margin: '5px 0 0 0' }}>
                 Global platform overview — {users.length} users across {colleges.filter(c => c.name !== 'Unassigned').length} institutions

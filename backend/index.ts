@@ -38,6 +38,7 @@ app.use(generalLimiter);
 // ─── Security: Restrict CORS to known origins only ───────────────────────────
 const ALLOWED_ORIGINS: string[] = [
   'https://statcap.vercel.app',
+  'https://statcap-vert.vercel.app',
   'http://localhost:5173',
   'https://localhost:5173',
   'http://localhost:5174',
