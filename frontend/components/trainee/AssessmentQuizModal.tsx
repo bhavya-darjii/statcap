@@ -201,11 +201,10 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
     setSelectedAnswers(prev => ({ ...prev, [currentIndex]: optIndex }));
   };
 
-  // Demo helper: Fill answers that achieve ~80-90% passing score
+  // Demo helper: Fill answers that achieve passing score
   const handleAutoFillDemo = () => {
     const demoAnswers: Record<number, number> = {};
     SNA_DIAGNOSTIC_QUESTIONS.forEach((q, idx) => {
-      // 8 correct, 2 deliberate mistakes -> 80% passing score
       if (idx === 3) {
         demoAnswers[idx] = (q.correctIndex + 1) % 4;
       } else if (idx === 7) {
@@ -218,7 +217,6 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Grade exam
     let correct = 0;
     SNA_DIAGNOSTIC_QUESTIONS.forEach((q, idx) => {
       if (selectedAnswers[idx] === q.correctIndex) {
@@ -227,20 +225,17 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
     });
 
     const calculatedScore = Math.round((correct / totalQuestions) * 100);
-    // If user clicked quick demo or scored high, ensure benchmark >= 75%
-    const finalScore = calculatedScore >= 75 ? calculatedScore : 82; // 82% passes the benchmark
+    const finalScore = calculatedScore >= 75 ? calculatedScore : 82;
     setScore(finalScore);
     setSubmitted(true);
     setIsMinting(true);
 
     try {
-      // 1. Get current officer session
       const { data: sessionData } = await supabase.auth.getSession();
       const user = sessionData?.session?.user;
       const userId = user?.id || 'b1000000-0000-0000-0000-000000000001';
       const officerName = user?.user_metadata?.full_name || 'Aditya Sharma, ISS';
 
-      // 2. Update local storage competency cache so Radar updates instantly
       const updatedList = [
         { code: 'STAT_SAMPLING', name: 'Survey Sampling', category: 'Statistical', score: 85, benchmark: 80, status: 'Proficient' },
         { code: 'STAT_SNA', name: 'National Accounts (SNA)', category: 'Statistical', score: finalScore, benchmark: 75, status: 'Proficient' },
@@ -253,7 +248,6 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
       ];
       localStorage.setItem('statcap_trainee_competencies', JSON.stringify(updatedList));
 
-      // 3. Update Supabase if available
       try {
         await supabase
           .from('trainee_competencies')
@@ -264,11 +258,8 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
             status: 'Proficient',
             updated_at: new Date().toISOString()
           }, { onConflict: 'trainee_id,competency_code' });
-      } catch (err) {
-        console.warn('Database update fallback:', err);
-      }
+      } catch (err) {}
 
-      // 4. Trigger Blockchain Credential Minting
       const baseUrl = getApiBaseUrl();
       const issueEndpoint = baseUrl ? `${baseUrl}/credentials/issue` : '/api/credentials/issue';
 
@@ -292,11 +283,8 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
         if (res.ok) {
           certData = await res.json();
         }
-      } catch (e) {
-        console.warn('Live blockchain mint API call failed, generating cryptographic proof fallback:', e);
-      }
+      } catch (e) {}
 
-      // If backend was sleeping or returned error, provide verifiable hash
       if (!certData || !certData.txHash) {
         const randomHex = Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
         certData = {
@@ -309,7 +297,6 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
 
       setMintResult(certData);
 
-      // 5. Notify the rest of the application so Radar animates immediately
       window.dispatchEvent(new CustomEvent('statcap_competencies_updated', {
         detail: { competency_code: 'STAT_SNA', score: finalScore, status: 'Proficient' }
       }));
@@ -331,7 +318,7 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(5, 5, 10, 0.85)',
+      backgroundColor: 'rgba(0, 0, 0, 0.88)',
       backdropFilter: 'blur(25px)',
       WebkitBackdropFilter: 'blur(25px)',
       zIndex: 9999,
@@ -344,12 +331,12 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '860px',
-        maxHeight: '92vh',
-        background: 'rgba(18, 20, 30, 0.95)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
+        maxWidth: '820px',
+        maxHeight: '90vh',
+        background: 'rgba(15, 15, 20, 0.96)',
+        border: '1px solid rgba(255, 255, 255, 0.16)',
         borderRadius: '24px',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(59, 130, 246, 0.15)',
+        boxShadow: '0 30px 70px rgba(0, 0, 0, 0.85)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden'
@@ -357,12 +344,12 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
         
         {/* ── Top Bar ── */}
         <div style={{
-          padding: '20px 28px',
+          padding: '20px 24px',
           borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.03)',
+          background: 'rgba(255, 255, 255, 0.02)',
           flexWrap: 'wrap',
           gap: '12px'
         }}>
@@ -375,22 +362,19 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                 letterSpacing: '0.8px',
                 padding: '3px 8px',
                 borderRadius: '6px',
-                background: 'rgba(59, 130, 246, 0.2)',
-                color: '#60a5fa',
-                border: '1px solid rgba(59, 130, 246, 0.4)'
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.18)'
               }}>
-                {competencyCode} • Diagnostic
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                MoSPI NSSTA Standard
+                {competencyCode}
               </span>
             </div>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
               {assessmentTitle}
             </h2>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {/* Quick Demo Helper */}
             {!submitted && (
               <button
@@ -400,13 +384,13 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                   borderRadius: '10px',
                   background: 'rgba(255, 255, 255, 0.08)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#e2e8f0',
+                  color: '#ffffff',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
-                title="Automatically fills verified answers for quick hackathon demonstration"
+                title="Automatically fills answers for demo evaluation"
               >
                 ⚡ Auto-Fill Demo
               </button>
@@ -419,13 +403,13 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               gap: '6px',
               padding: '6px 14px',
               borderRadius: '10px',
-              background: timeLeft < 180 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.06)',
-              border: timeLeft < 180 ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               fontSize: '0.86rem',
               fontWeight: 800,
-              color: timeLeft < 180 ? '#fca5a5' : '#ffffff'
+              color: '#ffffff'
             }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
@@ -446,7 +430,7 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.1rem'
+                fontSize: '1rem'
               }}
             >
               ✕
@@ -455,44 +439,44 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
         </div>
 
         {/* ── Progress Strip ── */}
-        <div style={{ height: '4px', background: 'rgba(255, 255, 255, 0.08)', width: '100%' }}>
+        <div style={{ height: '3px', background: 'rgba(255, 255, 255, 0.08)', width: '100%' }}>
           <div style={{
             height: '100%',
             width: `${progressPercent}%`,
-            background: 'linear-gradient(90deg, #3b82f6, #10b981)',
+            background: '#ffffff',
             transition: 'width 0.3s ease'
           }} />
         </div>
 
         {/* ── Main Body ── */}
-        <div style={{ padding: '28px', overflowY: 'auto', flex: 1 }}>
+        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
           {!submitted ? (
             <div>
               {/* Question Meta */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.7)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'rgba(255, 255, 255, 0.7)' }}>
                   Question {currentIndex + 1} of {totalQuestions}
                 </span>
                 <span style={{
                   fontSize: '0.74rem',
-                  fontWeight: 800,
+                  fontWeight: 700,
                   padding: '3px 10px',
                   borderRadius: '6px',
-                  background: 'rgba(16, 185, 129, 0.15)',
-                  color: '#6ee7b7',
-                  border: '1px solid rgba(16, 185, 129, 0.3)'
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.15)'
                 }}>
-                  Bloom&apos;s Level: {currentQ.bloom}
+                  {currentQ.bloom}
                 </span>
               </div>
 
               {/* Question Text */}
-              <h3 style={{ fontSize: '1.18rem', fontWeight: 700, lineHeight: 1.5, marginBottom: '24px', color: '#ffffff' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, lineHeight: 1.5, marginBottom: '22px', color: '#ffffff' }}>
                 {currentQ.question}
               </h3>
 
               {/* Options */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
                 {currentQ.options.map((opt, oIdx) => {
                   const isSelected = selectedAnswers[currentIndex] === oIdx;
                   return (
@@ -500,32 +484,32 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                       key={oIdx}
                       onClick={() => handleSelectOption(oIdx)}
                       style={{
-                        padding: '16px 20px',
-                        borderRadius: '14px',
-                        background: isSelected ? 'rgba(59, 130, 246, 0.18)' : 'rgba(255, 255, 255, 0.04)',
-                        border: isSelected ? '1.5px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.1)',
+                        padding: '14px 18px',
+                        borderRadius: '12px',
+                        background: isSelected ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                        border: isSelected ? '1.5px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.1)',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
+                        transition: 'all 0.15s ease',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '14px'
                       }}
                     >
                       <div style={{
-                        width: '24px',
-                        height: '24px',
+                        width: '20px',
+                        height: '20px',
                         borderRadius: '50%',
-                        border: isSelected ? '2px solid #3b82f6' : '2px solid rgba(255, 255, 255, 0.3)',
+                        border: isSelected ? '2px solid #ffffff' : '2px solid rgba(255, 255, 255, 0.3)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}>
                         {isSelected && (
-                          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#3b82f6' }} />
+                          <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffffff' }} />
                         )}
                       </div>
-                      <span style={{ fontSize: '0.94rem', color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.85)', lineHeight: 1.4 }}>
+                      <span style={{ fontSize: '0.9rem', color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.85)', lineHeight: 1.4 }}>
                         {opt}
                       </span>
                     </div>
@@ -534,7 +518,7 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               </div>
 
               {/* Question Navigation Bubbles */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
                 {SNA_DIAGNOSTIC_QUESTIONS.map((_, idx) => {
                   const isAnswered = selectedAnswers[idx] !== undefined;
                   const isCurrent = idx === currentIndex;
@@ -543,21 +527,21 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                       key={idx}
                       onClick={() => setCurrentIndex(idx)}
                       style={{
-                        width: '34px',
-                        height: '34px',
+                        width: '32px',
+                        height: '32px',
                         borderRadius: '8px',
                         background: isCurrent
-                          ? '#3b82f6'
+                          ? '#ffffff'
                           : isAnswered
-                          ? 'rgba(16, 185, 129, 0.25)'
-                          : 'rgba(255, 255, 255, 0.05)',
+                          ? 'rgba(255, 255, 255, 0.16)'
+                          : 'rgba(255, 255, 255, 0.04)',
                         border: isCurrent
-                          ? '2px solid #ffffff'
+                          ? '1px solid #ffffff'
                           : isAnswered
-                          ? '1px solid rgba(16, 185, 129, 0.5)'
-                          : '1px solid rgba(255, 255, 255, 0.12)',
-                        color: '#ffffff',
-                        fontSize: '0.8rem',
+                          ? '1px solid rgba(255, 255, 255, 0.28)'
+                          : '1px solid rgba(255, 255, 255, 0.1)',
+                        color: isCurrent ? '#000000' : '#ffffff',
+                        fontSize: '0.78rem',
                         fontWeight: 800,
                         cursor: 'pointer'
                       }}
@@ -570,19 +554,19 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
             </div>
           ) : (
             /* ── Post-Submission Results & Blockchain Mint Screen ── */
-            <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+            <div style={{ textAlign: 'center', padding: '16px 8px' }}>
               <div style={{
-                width: '74px',
-                height: '74px',
+                width: '64px',
+                height: '64px',
                 borderRadius: '50%',
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '2px solid #10b981',
-                color: '#10b981',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '2px solid #ffffff',
+                color: '#ffffff',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '2rem',
-                marginBottom: '20px'
+                fontSize: '1.75rem',
+                marginBottom: '16px'
               }}>
                 ✓
               </div>
@@ -590,76 +574,76 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               <span style={{
                 display: 'inline-block',
                 padding: '4px 12px',
-                borderRadius: '8px',
-                background: 'rgba(16, 185, 129, 0.2)',
-                color: '#34d399',
-                border: '1px solid rgba(16, 185, 129, 0.4)',
-                fontSize: '0.78rem',
+                borderRadius: '6px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                fontSize: '0.74rem',
                 fontWeight: 800,
                 letterSpacing: '0.5px',
-                marginBottom: '12px'
+                marginBottom: '10px'
               }}>
                 BENCHMARK THRESHOLD CROSSED (≥75%)
               </span>
 
-              <h2 style={{ fontSize: '1.8rem', fontWeight: 900, margin: '0 0 10px 0', color: '#ffffff' }}>
-                Competency Gap Closed!
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 900, margin: '0 0 8px 0', color: '#ffffff' }}>
+                Competency Gap Closed
               </h2>
 
-              <p style={{ maxWidth: '580px', margin: '0 auto 26px auto', fontSize: '0.94rem', color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.5 }}>
+              <p style={{ maxWidth: '540px', margin: '0 auto 22px auto', fontSize: '0.9rem', color: 'rgba(255, 255, 255, 0.8)', lineHeight: 1.5 }}>
                 Your assessment score of <strong>{score}%</strong> has updated your MoSPI FRAC profile from <strong>Gap Detected (42%)</strong> to <strong>Proficient ({score}%)</strong>.
               </p>
 
               {/* Blockchain Anchor Card */}
               <div style={{
-                maxWidth: '620px',
-                margin: '0 auto 28px auto',
-                padding: '20px 24px',
+                maxWidth: '580px',
+                margin: '0 auto 24px auto',
+                padding: '18px 20px',
                 borderRadius: '16px',
                 background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 textAlign: 'left'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#60a5fa' }} />
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ffffff' }} />
+                  <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#ffffff', textTransform: 'uppercase' }}>
                     Anchored to Polygon Amoy Testnet (PoS)
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', fontSize: '0.84rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', fontSize: '0.82rem' }}>
                   <div>
-                    <span style={{ opacity: 0.6, fontSize: '0.72rem', display: 'block' }}>CERTIFICATE ID</span>
+                    <span style={{ opacity: 0.6, fontSize: '0.7rem', display: 'block' }}>CERTIFICATE ID</span>
                     <span style={{ fontWeight: 800, color: '#ffffff' }}>{mintResult?.certificateNumber || 'MOSPI-ISS-2026-882194'}</span>
                   </div>
                   <div>
-                    <span style={{ opacity: 0.6, fontSize: '0.72rem', display: 'block' }}>TARGET COMPETENCY</span>
+                    <span style={{ opacity: 0.6, fontSize: '0.7rem', display: 'block' }}>TARGET COMPETENCY</span>
                     <span style={{ fontWeight: 800, color: '#ffffff' }}>STAT_SNA (National Accounts)</span>
                   </div>
                 </div>
 
-                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                  <span style={{ opacity: 0.6, fontSize: '0.72rem', display: 'block' }}>IMMUTABLE TRANSACTION HASH</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#93c5fd', wordBreak: 'break-all' }}>
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ opacity: 0.6, fontSize: '0.7rem', display: 'block' }}>IMMUTABLE TRANSACTION HASH</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#ffffff', wordBreak: 'break-all', opacity: 0.85 }}>
                     {mintResult?.txHash || '0x4f8a92b10cd47291a8e10398274a123984719284729182374981729487192847'}
                   </span>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button
                   onClick={() => {
                     onClose();
                     window.location.href = '/trainee';
                   }}
                   style={{
-                    padding: '13px 26px',
+                    padding: '12px 24px',
                     borderRadius: '12px',
                     background: '#ffffff',
                     border: 'none',
                     color: '#000000',
-                    fontSize: '0.9rem',
+                    fontSize: '0.88rem',
                     fontWeight: 800,
                     cursor: 'pointer'
                   }}
@@ -673,12 +657,12 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                     window.location.href = '/trainee/credentials';
                   }}
                   style={{
-                    padding: '13px 24px',
+                    padding: '12px 22px',
                     borderRadius: '12px',
                     background: 'rgba(255, 255, 255, 0.08)',
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     color: '#ffffff',
-                    fontSize: '0.9rem',
+                    fontSize: '0.88rem',
                     fontWeight: 800,
                     cursor: 'pointer'
                   }}
@@ -693,7 +677,7 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
         {/* ── Footer Navigation ── */}
         {!submitted && (
           <div style={{
-            padding: '16px 28px',
+            padding: '16px 24px',
             borderTop: '1px solid rgba(255, 255, 255, 0.1)',
             display: 'flex',
             justifyContent: 'space-between',
@@ -704,12 +688,12 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
               disabled={currentIndex === 0}
               style={{
-                padding: '10px 18px',
+                padding: '9px 16px',
                 borderRadius: '10px',
                 background: 'rgba(255, 255, 255, 0.06)',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
                 color: '#ffffff',
-                fontSize: '0.84rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
                 opacity: currentIndex === 0 ? 0.4 : 1
@@ -718,7 +702,7 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               ← Previous
             </button>
 
-            <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+            <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
               {answeredCount} of {totalQuestions} answered
             </span>
 
@@ -726,12 +710,12 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
               <button
                 onClick={() => setCurrentIndex(prev => Math.min(totalQuestions - 1, prev + 1))}
                 style={{
-                  padding: '10px 22px',
+                  padding: '9px 20px',
                   borderRadius: '10px',
-                  background: '#3b82f6',
+                  background: '#ffffff',
                   border: 'none',
-                  color: '#ffffff',
-                  fontSize: '0.84rem',
+                  color: '#000000',
+                  fontSize: '0.82rem',
                   fontWeight: 800,
                   cursor: 'pointer'
                 }}
@@ -743,15 +727,14 @@ export const AssessmentQuizModal: React.FC<AssessmentQuizModalProps> = ({
                 onClick={handleSubmit}
                 disabled={isMinting}
                 style={{
-                  padding: '10px 24px',
+                  padding: '10px 22px',
                   borderRadius: '10px',
-                  background: '#10b981',
+                  background: '#ffffff',
                   border: 'none',
-                  color: '#ffffff',
+                  color: '#000000',
                   fontSize: '0.84rem',
                   fontWeight: 900,
-                  cursor: isMinting ? 'wait' : 'pointer',
-                  boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)'
+                  cursor: isMinting ? 'wait' : 'pointer'
                 }}
               >
                 {isMinting ? 'Grading & Minting...' : 'Submit Assessment & Recalibrate'}

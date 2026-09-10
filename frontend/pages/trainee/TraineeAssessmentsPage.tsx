@@ -1,10 +1,13 @@
 /* eslint-disable */
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 import AssessmentQuizModal from '../../components/trainee/AssessmentQuizModal';
 
 export const TraineeAssessmentsPage: React.FC = () => {
+  const navigate = useNavigate();
+
   const [selectedAssessment, setSelectedAssessment] = useState<{
     title: string;
     code: string;
@@ -25,7 +28,7 @@ export const TraineeAssessmentsPage: React.FC = () => {
           setSnaCompleted(true);
           setSnaScore(sna.score);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Load any instructor published assessments from localStorage or Supabase
@@ -43,7 +46,6 @@ export const TraineeAssessmentsPage: React.FC = () => {
           .limit(5);
 
         if (dbData && dbData.length > 0) {
-          // Merge unique by title
           const titles = new Set(local.map((a: any) => a.title));
           const additions = dbData.filter((d: any) => !titles.has(d.title));
           setInstructorAssessments([...local, ...additions]);
@@ -70,324 +72,342 @@ export const TraineeAssessmentsPage: React.FC = () => {
     background: 'var(--liquid-glass-bg, rgba(10, 10, 15, 0.35))',
     backdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
     WebkitBackdropFilter: 'var(--liquid-glass-blur, blur(20px) saturate(180%))',
-    border: '1px solid var(--liquid-glass-border, rgba(255, 255, 255, 0.1))',
+    border: '1px solid var(--liquid-glass-border, rgba(255, 255, 255, 0.12))',
     boxShadow: 'var(--liquid-glass-shadow, 0 10px 40px -10px rgba(0, 0, 0, 0.5))',
-    borderRadius: '24px',
+    borderRadius: '20px',
     color: '#ffffff',
-    padding: '24px 28px',
-    marginBottom: '20px',
+    padding: '24px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    boxSizing: 'border-box',
+    width: '100%',
     transition: 'all 0.2s ease',
   };
 
+  const primaryBtnStyle: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    background: '#ffffff',
+    border: 'none',
+    color: '#000000',
+    fontSize: '0.86rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    transition: 'transform 0.15s ease, opacity 0.15s ease',
+  };
+
+  const secondaryBtnStyle: React.CSSProperties = {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '12px 16px',
+    borderRadius: '12px',
+    background: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    color: '#ffffff',
+    fontSize: '0.86rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    transition: 'transform 0.15s ease, background 0.15s ease',
+  };
+
   return (
-    <div style={{ width: '100%', padding: '0 0 60px', color: '#ffffff' }}>
-      
-      {/* ── Page Header ── */}
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-          <span style={{
-            fontSize: '0.74rem',
-            fontWeight: 800,
-            textTransform: 'uppercase',
-            letterSpacing: '1px',
-            padding: '3px 10px',
-            borderRadius: '8px',
-            background: 'rgba(59, 130, 246, 0.2)',
-            color: '#60a5fa',
-            border: '1px solid rgba(59, 130, 246, 0.35)'
-          }}>
-            MoSPI Capacity Building & Competency Cell
-          </span>
-          <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.5)' }}>•</span>
-          <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-            ISS Cadre Evaluations
-          </span>
-        </div>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 900, margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
+    <div style={{ width: '100%', padding: '0 0 60px', color: '#ffffff', boxSizing: 'border-box' }}>
+
+      {/* ── Page Header (Clean, pure white, no extra pills) ── */}
+      <div style={{ marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '0 0 8px 0', letterSpacing: '-0.5px', color: '#ffffff' }}>
           Diagnostic Assessments & Evaluations
         </h1>
-        <p style={{ margin: 0, fontSize: '0.92rem', color: 'rgba(255, 255, 255, 0.75)', maxWidth: '800px', lineHeight: 1.5 }}>
-          Calibrated Bloom&apos;s-taxonomy assessments aligned with the National Statistical Systems Training Academy (NSSTA). 
-          Achieving required benchmark scores updates your FRAC Competency Radar and mints verified credentials onto the Polygon blockchain.
+        <p style={{ margin: 0, fontSize: '0.92rem', color: 'rgba(255, 255, 255, 0.75)', maxWidth: '820px', lineHeight: 1.5 }}>
+          Calibrated assessments aligned with National Statistical Systems Training Academy (NSSTA) standards.
+          Achieving required benchmarks recalibrates your FRAC Competency Radar and issues verifiable credentials on the blockchain.
         </p>
       </div>
 
-      {/* ── Metric Highlights ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
-        <div style={{ ...cardBase, padding: '16px 20px', marginBottom: 0 }}>
-          <span style={{ fontSize: '0.74rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-            Action Required
-          </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: snaCompleted ? '#4ade80' : '#f87171' }}>
-              {snaCompleted ? '0 Gaps' : '1 Gap'}
-            </span>
-            <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-              {snaCompleted ? 'All benchmarks met' : 'STAT_SNA pending'}
-            </span>
-          </div>
-        </div>
-
-        <div style={{ ...cardBase, padding: '16px 20px', marginBottom: 0 }}>
-          <span style={{ fontSize: '0.74rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-            Passing Benchmark
-          </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#60a5fa' }}>
-              75%
-            </span>
-            <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-              MoSPI FRAC Standard
-            </span>
-          </div>
-        </div>
-
-        <div style={{ ...cardBase, padding: '16px 20px', marginBottom: 0 }}>
-          <span style={{ fontSize: '0.74rem', opacity: 0.7, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-            Blockchain Anchoring
-          </span>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399' }}>
-              Polygon Amoy
-            </span>
-            <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-              PoS Consensus
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Section Header ── */}
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '16px', letterSpacing: '-0.3px' }}>
-        Priority Diagnostic Assessments
-      </h2>
-
-      {/* ── CARD 1: SNA Diagnostic Evaluation (Hero SIH Demo Item) ── */}
+      {/* ── Small Side-by-Side Cards Grid ── */}
       <div style={{
-        ...cardBase,
-        border: snaCompleted
-          ? '1px solid rgba(16, 185, 129, 0.4)'
-          : '1px solid rgba(239, 68, 68, 0.35)',
-        background: snaCompleted
-          ? 'rgba(16, 185, 129, 0.05)'
-          : 'rgba(239, 68, 68, 0.04)'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: '20px',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+
+        {/* ── CARD 1: SNA Diagnostic Evaluation (Hero SIH Demo Item) ── */}
+        <div style={cardBase}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
               <span style={{
-                padding: '4px 10px',
-                borderRadius: '8px',
-                fontSize: '0.74rem',
+                padding: '4px 9px',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
                 fontWeight: 800,
-                background: snaCompleted ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                color: snaCompleted ? '#6ee7b7' : '#fca5a5',
-                border: snaCompleted ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                background: 'rgba(255, 255, 255, 0.12)',
+                color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
               }}>
-                {snaCompleted ? `✓ Benchmark Achieved (${snaScore || 82}%)` : 'Action Required • Gap Detected (42% vs 75%)'}
+                {snaCompleted ? `Benchmark Achieved (${snaScore || 82}%)` : 'Action Required (42% vs 75%)'}
               </span>
 
               <span style={{
-                padding: '4px 10px',
-                borderRadius: '8px',
-                fontSize: '0.74rem',
+                padding: '4px 9px',
+                borderRadius: '6px',
+                fontSize: '0.72rem',
                 fontWeight: 700,
-                background: 'rgba(255, 255, 255, 0.08)',
+                background: 'rgba(255, 255, 255, 0.06)',
                 color: '#ffffff',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
               }}>
-                STAT_SNA • National Accounts
-              </span>
-
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                10 Questions • 15 Mins • 100 Marks
+                STAT_SNA
               </span>
             </div>
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 6px 0', color: '#ffffff' }}>
-              System of National Accounts (SNA): GVA & GDP Estimation Diagnostic
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff', lineHeight: 1.35 }}>
+              System of National Accounts (SNA): GVA & GDP Estimation
             </h3>
 
-            <p style={{ margin: 0, fontSize: '0.86rem', color: 'rgba(255, 255, 255, 0.75)', lineHeight: 1.5, maxWidth: '750px' }}>
-              Official diagnostic examination assessing proficiency across SNA 2008 production boundaries, basic vs. factor cost GVA, 
-              double deflation methodologies, FISIM allocation, and Non-Observed Economy (NOE) imputations. 
-              Scoring &ge;75% recalibrates your radar and issues a verifiable blockchain credential.
+            <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.5 }}>
+              Diagnostic evaluation covering basic vs factor cost GVA, double deflation, FISIM, and Non-Observed Economy imputations.
             </p>
+
+            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '18px' }}>
+              10 Questions • 15 Mins • Benchmark: 75%
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+            {snaCompleted ? (
+              <>
+                <button
+                  onClick={() => navigate('/trainee/credentials')}
+                  style={{ ...primaryBtnStyle, flex: 1 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                >
+                  View Credential
+                </button>
+                <button
+                  onClick={() => setSelectedAssessment({
+                    title: "System of National Accounts (SNA): GVA & GDP Estimation Diagnostic",
+                    code: "STAT_SNA"
+                  })}
+                  style={{ ...secondaryBtnStyle, width: 'auto', padding: '12px 14px' }}
+                  title="Retake evaluation"
+                >
+                  Retake
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setSelectedAssessment({
+                  title: "System of National Accounts (SNA): GVA & GDP Estimation Diagnostic",
+                  code: "STAT_SNA"
+                })}
+                style={primaryBtnStyle}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+              >
+                Start Assessment
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── CARD 2: Survey Sampling (Completed Benchmark) ── */}
+        <div style={cardBase}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <span style={{
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
+                background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              }}>
+                Proficient (85% Achieved)
+              </span>
+              <span style={{
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }}>
+                STAT_SAMPLING
+              </span>
+            </div>
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff', lineHeight: 1.35 }}>
+              NSSO Multi-Stage Stratified Sampling & Estimation
+            </h3>
+
+            <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.5 }}>
+              Sample frame design, primary sampling unit allocation, and non-sampling error reduction methodologies.
+            </p>
+
+            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '18px' }}>
+              15 Questions • Completed • Benchmark: 80%
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/trainee/credentials')}
+            style={secondaryBtnStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
+          >
+            View Credential
+          </button>
+        </div>
+
+        {/* ── CARD 3: Price Statistics (Completed Benchmark) ── */}
+        <div style={cardBase}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <span style={{
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
+                background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              }}>
+                Proficient (78% Achieved)
+              </span>
+              <span style={{
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }}>
+                STAT_CPI_IIP
+              </span>
+            </div>
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff', lineHeight: 1.35 }}>
+              Consumer Price Index & Index of Industrial Production
+            </h3>
+
+            <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.5 }}>
+              Compilation methodology, item basket weighting, and geometric mean aggregation standards across sectors.
+            </p>
+
+            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '18px' }}>
+              12 Questions • Completed • Benchmark: 80%
+            </div>
           </div>
 
           <button
             onClick={() => setSelectedAssessment({
-              title: "System of National Accounts (SNA): GVA & GDP Estimation Diagnostic",
-              code: "STAT_SNA"
+              title: "Consumer Price Index & Index of Industrial Production Evaluation",
+              code: "STAT_CPI_IIP"
             })}
-            style={{
-              padding: '13px 26px',
-              borderRadius: '12px',
-              background: snaCompleted ? 'rgba(255, 255, 255, 0.1)' : '#ffffff',
-              border: snaCompleted ? '1px solid rgba(255, 255, 255, 0.25)' : 'none',
-              color: snaCompleted ? '#ffffff' : '#000000',
-              fontSize: '0.9rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'transform 0.2s ease',
-              flexShrink: 0
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; }}
+            style={secondaryBtnStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.14)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'; }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-            <span>{snaCompleted ? 'Retake Evaluation' : 'Start Assessment →'}</span>
+            Retake Assessment
           </button>
         </div>
-      </div>
 
-      {/* ── CARD 2: Survey Sampling (Completed Benchmark) ── */}
-      <div style={{ ...cardBase, opacity: 0.9 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        {/* ── CARD 4: Labour Statistics (Developing) ── */}
+        <div style={cardBase}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
               <span style={{
-                padding: '3px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
-                background: 'rgba(34, 197, 94, 0.18)', color: '#4ade80',
-                border: '1px solid rgba(34, 197, 94, 0.35)',
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
+                background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
               }}>
-                ✓ Proficient (85% Achieved)
+                Developing (65% vs 75%)
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                STAT_SAMPLING • Benchmark: 80%
+              <span style={{
+                padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }}>
+                STAT_PLFS
               </span>
             </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 4px 0' }}>
-              NSSO Multi-Stage Stratified Sampling & Estimation Procedures
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff', lineHeight: 1.35 }}>
+              Periodic Labour Force Survey (PLFS) & CAPI Field Data
             </h3>
-            <p style={{ margin: 0, fontSize: '0.84rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-              Completed during Phase-I Induction Training at NSSTA Greater Noida. Verified on-chain credential active.
+
+            <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.5 }}>
+              Activity status concepts (Usual vs Current Weekly), labor force participation, and CAPI field validation.
             </p>
-          </div>
 
-          <span style={{
-            padding: '8px 16px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            color: 'rgba(255, 255, 255, 0.8)'
-          }}>
-            Credential Issued ✓
-          </span>
-        </div>
-      </div>
-
-      {/* ── CARD 3: Price Statistics (Completed Benchmark) ── */}
-      <div style={{ ...cardBase, opacity: 0.9 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '6px' }}>
-              <span style={{
-                padding: '3px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
-                background: 'rgba(34, 197, 94, 0.18)', color: '#4ade80',
-                border: '1px solid rgba(34, 197, 94, 0.35)',
-              }}>
-                ✓ Proficient (78% Achieved)
-              </span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                STAT_CPI_IIP • Benchmark: 80%
-              </span>
+            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '18px' }}>
+              10 Questions • 15 Mins • Benchmark: 75%
             </div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 4px 0' }}>
-              Consumer Price Index (CPI-Rural/Urban) & Index of Industrial Production (IIP)
-            </h3>
-            <p style={{ margin: 0, fontSize: '0.84rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-              Compilation methodology, item basket weighting, and geometric mean aggregation standards.
-            </p>
           </div>
 
-          <span style={{
-            padding: '8px 16px',
-            borderRadius: '10px',
-            background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            fontSize: '0.82rem',
-            fontWeight: 700,
-            color: 'rgba(255, 255, 255, 0.8)'
-          }}>
-            Passed
-          </span>
+          <button
+            onClick={() => setSelectedAssessment({
+              title: "Periodic Labour Force Survey (PLFS) Evaluation",
+              code: "STAT_PLFS"
+            })}
+            style={primaryBtnStyle}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+          >
+            Start Assessment
+          </button>
         </div>
-      </div>
 
-      {/* ── Instructor Published Assessments (Live Dynamic Section) ── */}
-      {instructorAssessments.length > 0 && (
-        <div style={{ marginTop: '36px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.3px' }}>
-              Live Published Assessments by NSSTA Course Directors
-            </h2>
-            <span style={{
-              padding: '2px 8px',
-              borderRadius: '6px',
-              fontSize: '0.72rem',
-              fontWeight: 800,
-              background: 'rgba(168, 85, 247, 0.2)',
-              color: '#d8b4fe',
-              border: '1px solid rgba(168, 85, 247, 0.35)',
-            }}>
-              AI Generated & Calibrated
-            </span>
-          </div>
+        {/* ── Dynamically Render Any Instructor Published Assessments ── */}
+        {instructorAssessments.map((a, idx) => (
+          <div key={idx} style={cardBase}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                <span style={{
+                  padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
+                  background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                }}>
+                  Instructor Published
+                </span>
+                <span style={{
+                  padding: '4px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                  background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                }}>
+                  {a.competency_code || 'STAT_SNA'}
+                </span>
+              </div>
 
-          {instructorAssessments.map((a, idx) => (
-            <div key={idx} style={cardBase}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{
-                      padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
-                      background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa'
-                    }}>
-                      {a.competency_code || 'STAT_SNA'}
-                    </span>
-                    <span style={{ fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                      Published by {a.created_by || 'NSSTA Course Director'}
-                    </span>
-                  </div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: '0 0 4px 0' }}>
-                    {a.title}
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.84rem', color: 'rgba(255, 255, 255, 0.75)' }}>
-                    {a.question_count || (a.questions ? a.questions.length : 10)} Questions • MoSPI Standard Assessment
-                  </p>
-                </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: '0 0 8px 0', color: '#ffffff', lineHeight: 1.35 }}>
+                {a.title}
+              </h3>
 
-                <button
-                  onClick={() => setSelectedAssessment({
-                    title: a.title,
-                    code: a.competency_code || 'STAT_SNA'
-                  })}
-                  style={{
-                    padding: '11px 22px',
-                    borderRadius: '12px',
-                    background: '#ffffff',
-                    border: 'none',
-                    color: '#000000',
-                    fontSize: '0.86rem',
-                    fontWeight: 800,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Take Assessment →
-                </button>
+              <p style={{ margin: '0 0 14px 0', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.5 }}>
+                Published by {a.created_by || 'NSSTA Course Director'}. Calibrated MoSPI cadre evaluation.
+              </p>
+
+              <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.6)', marginBottom: '18px' }}>
+                {a.question_count || (a.questions ? a.questions.length : 10)} Questions • MoSPI Standard
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <button
+              onClick={() => setSelectedAssessment({
+                title: a.title,
+                code: a.competency_code || 'STAT_SNA'
+              })}
+              style={primaryBtnStyle}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              Start Assessment
+            </button>
+          </div>
+        ))}
+
+      </div>
 
       {/* ── Quiz Modal Runner ── */}
       {selectedAssessment && (
