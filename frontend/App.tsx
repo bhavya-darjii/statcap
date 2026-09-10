@@ -24,6 +24,7 @@ import DirectorateLayout from './layouts/DirectorateLayout';
 import TraineeDashboard from './pages/trainee/TraineeDashboard';
 import LectureVault from './pages/trainee/LectureVault';
 import TraineeCredentialsPage from './pages/trainee/TraineeCredentialsPage';
+import TraineeAssessmentsPage from './pages/trainee/TraineeAssessmentsPage';
 
 // ── Instructor pages ──────────────────────────────────────────────────────────
 import InstructorHome from './pages/instructor/InstructorHome';
@@ -140,6 +141,7 @@ function App() {
                   </ProtectedRoute>
                 }>
                   <Route index element={<TraineeDashboard />} />
+                  <Route path="assessments" element={<TraineeAssessmentsPage />} />
                   <Route path="credentials" element={<TraineeCredentialsPage />} />
                   <Route path="lecture-vault" element={<LectureVault />} />
                   <Route path="lecture-vault/:subjectSlug" element={<LectureVault />} />

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { TRAINEE_NAV } from '../config/navigation';
+import { extractFirstName } from '../utils/nameUtils';
 import UnifiedLayout from './UnifiedLayout';
 
 const GREETINGS = [
@@ -26,13 +27,13 @@ const TraineeLayout = () => {
         const { data: userData } = await supabase.from('users').select('full_name').eq('id', user.id).maybeSingle();
         if (mounted) {
           if (userData && userData.full_name) {
-            setTraineeName(userData.full_name.split(' ')[0]);
+            setTraineeName(extractFirstName(userData.full_name, "Officer"));
           } else {
-            setTraineeName((user.user_metadata?.full_name || "Officer").split(' ')[0]);
+            setTraineeName(extractFirstName(user.user_metadata?.full_name, "Officer"));
           }
         }
       } catch (error) {
-        if (mounted) setTraineeName((user.user_metadata?.full_name || "Officer").split(' ')[0]);
+        if (mounted) setTraineeName(extractFirstName(user.user_metadata?.full_name, "Officer"));
       }
       if (mounted) setLoading(false);
     };

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../services/supabase';
 import CompetencyRadar from '../../components/trainee/CompetencyRadar';
 import IgotRecommendations from '../../components/trainee/IgotRecommendations';
+import AssessmentQuizModal from '../../components/trainee/AssessmentQuizModal';
 import './TraineeDashboard.css';
 
 export const TraineeDashboard: React.FC = () => {
@@ -18,6 +19,9 @@ export const TraineeDashboard: React.FC = () => {
 
   const [selectedGap, setSelectedGap] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
+  const [snaCompleted, setSnaCompleted] = useState(false);
+  const [snaScore, setSnaScore] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -52,8 +56,33 @@ export const TraineeDashboard: React.FC = () => {
       }
     };
 
+    // Check if SNA was already completed
+    const localComp = localStorage.getItem('statcap_trainee_competencies');
+    if (localComp) {
+      try {
+        const parsed = JSON.parse(localComp);
+        const sna = parsed.find((c: any) => c.code === 'STAT_SNA');
+        if (sna && sna.score >= 75) {
+          setSnaCompleted(true);
+          setSnaScore(sna.score);
+        }
+      } catch (e) {}
+    }
+
     loadProfile();
-    return () => { mounted = false; };
+
+    const handleUpdate = (e: any) => {
+      if (e.detail?.competency_code === 'STAT_SNA') {
+        setSnaCompleted(true);
+        setSnaScore(e.detail.score);
+      }
+    };
+    window.addEventListener('statcap_competencies_updated', handleUpdate);
+
+    return () => { 
+      mounted = false; 
+      window.removeEventListener('statcap_competencies_updated', handleUpdate);
+    };
   }, []);
 
   const cardBase: React.CSSProperties = {
@@ -183,28 +212,35 @@ export const TraineeDashboard: React.FC = () => {
             </div>
 
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
-              Pending Diagnostic Assessment: System of National Accounts (SNA)
+              {snaCompleted
+                ? `Benchmark Achieved: System of National Accounts (SNA)`
+                : `Pending Diagnostic Assessment: System of National Accounts (SNA)`}
             </h3>
 
             <span style={{
               padding: '3px 9px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800,
-              background: 'rgba(239, 68, 68, 0.18)', color: '#ffffff',
-              border: '1px solid rgba(239, 68, 68, 0.35)',
+              background: snaCompleted ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)',
+              color: snaCompleted ? '#4ade80' : '#ffffff',
+              border: snaCompleted ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid rgba(239, 68, 68, 0.35)',
             }}>
-              Required for Gap Closure
+              {snaCompleted ? `✓ Benchmark Crossed (${snaScore || 82}%)` : 'Required for Gap Closure'}
             </span>
           </div>
 
           <p style={{ margin: 0, fontSize: '0.84rem', color: 'rgba(255, 255, 255, 0.75)' }}>
-            AI-generated 10-question Bloom&apos;s-taxonomy quiz ingested from official MoSPI survey methodologies. Passing score (&ge;75%) mints a verified blockchain certificate.
+            {snaCompleted
+              ? 'Your score has been verified and your Soulbound Credential has been anchored to the Polygon Amoy blockchain.'
+              : 'AI-generated 10-question Bloom\'s-taxonomy quiz ingested from official MoSPI survey methodologies. Passing score (≥75%) mints a verified blockchain certificate.'}
           </p>
         </div>
 
         <button
-          onClick={() => alert('Launching MoSPI Diagnostic Assessment: System of National Accounts (SNA). Answers will recalibrate your FRAC Radar in real time!')}
+          onClick={() => setIsQuizOpen(true)}
           style={{
             padding: '12px 24px', borderRadius: '12px',
-            background: '#ffffff', border: 'none', color: '#000000',
+            background: snaCompleted ? 'rgba(255, 255, 255, 0.12)' : '#ffffff',
+            border: snaCompleted ? '1px solid rgba(255, 255, 255, 0.25)' : 'none',
+            color: snaCompleted ? '#ffffff' : '#000000',
             fontSize: '0.86rem', fontWeight: 800, cursor: 'pointer',
             display: 'inline-flex', alignItems: 'center', gap: '8px',
             transition: 'transform 0.2s ease',
@@ -215,9 +251,21 @@ export const TraineeDashboard: React.FC = () => {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
-          <span>Start Assessment</span>
+          <span>{snaCompleted ? 'Retake Assessment' : 'Start Assessment'}</span>
         </button>
       </div>
+
+      {/* Interactive MoSPI Diagnostic Quiz Modal */}
+      <AssessmentQuizModal
+        isOpen={isQuizOpen}
+        onClose={() => setIsQuizOpen(false)}
+        assessmentTitle="Diagnostic Assessment: System of National Accounts (SNA)"
+        competencyCode="STAT_SNA"
+        onAssessmentCompleted={(score) => {
+          setSnaCompleted(true);
+          setSnaScore(score);
+        }}
+      />
     </div>
   );
 };

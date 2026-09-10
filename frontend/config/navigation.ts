@@ -16,7 +16,8 @@ export const HOD_NAV = [
 ];
 
 export const TRAINEE_NAV = [
-  { path: '/trainee', label: 'Competency & Training Dashboard' },
+  { path: '/trainee', label: 'Dashboard' },
+  { path: '/trainee/assessments', label: 'Assessments' },
   { path: '/trainee/credentials', label: 'Verifiable Credentials' },
   { path: '/trainee/lecture-vault', label: 'Course Library' },
 ];

@@ -42,6 +42,19 @@ export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void
 
     const loadCompetencies = async () => {
       try {
+        // Check local storage override first for instant demo reactivity
+        const local = localStorage.getItem('statcap_trainee_competencies');
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0 && mounted) {
+              setCompetencies(parsed);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {}
+        }
+
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData?.session?.user?.id;
         if (!userId) {
@@ -73,7 +86,23 @@ export const CompetencyRadar: React.FC<{ onGapSelect?: (gapCode: string) => void
     };
 
     loadCompetencies();
-    return () => { mounted = false; };
+
+    // Real-time listener for assessment submissions
+    const handleCompetencyUpdate = (e: any) => {
+      const { competency_code, score, status } = e.detail || {};
+      if (competency_code && mounted) {
+        setCompetencies(prev => prev.map(c => 
+          c.code === competency_code ? { ...c, score: Number(score), status } : c
+        ));
+      }
+    };
+
+    window.addEventListener('statcap_competencies_updated', handleCompetencyUpdate);
+
+    return () => { 
+      mounted = false; 
+      window.removeEventListener('statcap_competencies_updated', handleCompetencyUpdate);
+    };
   }, []);
 
   const chartData = competencies.map((c) => ({
