@@ -114,10 +114,18 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Start server
-const PORT = process.env.PORT ?? 5000;
-app.listen(PORT, () => {
-  console.log(`\n🚀 [Backend] StatCap Express Server is running on http://localhost:${PORT}`);
+// Start server. Render supplies PORT and requires services to listen on a public
+// interface; binding explicitly avoids an IPv6/localhost-only listener.
+const port = Number.parseInt(process.env.PORT ?? '5000', 10);
+const host = '0.0.0.0';
+
+const server = app.listen(port, host, () => {
+  console.log(`🚀 [Backend] StatCap Express Server is listening on http://${host}:${port}`);
+});
+
+server.on('error', (error) => {
+  console.error('[Backend] Failed to start HTTP server:', error);
+  process.exitCode = 1;
 });
 
 export default app;
