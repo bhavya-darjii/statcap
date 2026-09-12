@@ -25,6 +25,8 @@ import {
   presentationSystem,
   buildSyllabusParserPrompt,
   syllabusParserSystem,
+  buildExtractQuestionsPrompt,
+  buildMospiAssessmentPrompt,
 } from '../prompts/aiPrompts.js';
 
 /** Shared context passed from controller to service to logAiUsage */
@@ -409,3 +411,62 @@ export const parseSyllabusService = async (
     usage: { input: usage.promptTokenCount, output: usage.candidatesTokenCount },
   };
 };
+
+// --- Extract questions from uploaded exam document -------------------------
+export const extractQuestionsFromDocumentService = async (
+  { documentText, competencyCode, cadre }: { documentText?: string; competencyCode?: string; cadre?: string },
+  ctx: Ctx,
+) => {
+  const prompt = buildExtractQuestionsPrompt(documentText || '', competencyCode, cadre);
+  const data = await callGemini({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' },
+  });
+  const usage = data.usageMetadata || {};
+  await logAiUsage({ action: 'extract-uploaded-questions', inputTokens: usage.promptTokenCount || 0, outputTokens: usage.candidatesTokenCount || 0, ...ctx });
+  if (data.error || !data.candidates?.[0]) return [];
+  try {
+    const parsed = parseJson(data.candidates[0].content.parts[0].text);
+    return Array.isArray(parsed) ? parsed : (parsed.questions || []);
+  } catch (e) {
+    return [];
+  }
+};
+
+// --- Generate MoSPI assessment from blueprint & manual ----------------------
+export const generateMospiAssessmentService = async (
+  payload: {
+    documentText?: string;
+    competencyCode?: string;
+    cadre?: string;
+    numQuestions?: number;
+    btDistribution?: string[];
+    difficulty?: string;
+    assessmentType?: string;
+  },
+  ctx: Ctx,
+) => {
+  const prompt = buildMospiAssessmentPrompt(
+    payload.documentText || '',
+    payload.competencyCode || 'STAT_SNA',
+    payload.cadre || 'Indian Statistical Service (ISS - Group A)',
+    payload.numQuestions || 5,
+    payload.btDistribution,
+    payload.difficulty,
+    payload.assessmentType,
+  );
+  const data = await callGemini({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' },
+  });
+  const usage = data.usageMetadata || {};
+  await logAiUsage({ action: 'generate-mospi-assessment', inputTokens: usage.promptTokenCount || 0, outputTokens: usage.candidatesTokenCount || 0, ...ctx });
+  if (data.error || !data.candidates?.[0]) return [];
+  try {
+    const parsed = parseJson(data.candidates[0].content.parts[0].text);
+    return Array.isArray(parsed) ? parsed : (parsed.questions || []);
+  } catch (e) {
+    return [];
+  }
+};
+

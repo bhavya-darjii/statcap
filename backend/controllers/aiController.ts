@@ -22,6 +22,8 @@ import {
   classifyIntentService,
   generatePresentationService,
   parseSyllabusService,
+  extractQuestionsFromDocumentService,
+  generateMospiAssessmentService,
 } from '../services/aiGenerationService.js';
 
 interface TeacherCtx {
@@ -230,18 +232,41 @@ export const parseSyllabus = async (req: Request, res: Response): Promise<void> 
 
 // ─── 14. Generate MoSPI Assessment ────────────────────────────────────────────
 export const generateMospiAssessment = async (req: Request, res: Response): Promise<void> => {
-  const { documentText, numQuestions } = req.body as {
-    documentText?: string; competencyCode?: string; cadre?: string; numQuestions?: number;
+  const payload = req.body as {
+    documentText?: string;
+    competencyCode?: string;
+    cadre?: string;
+    numQuestions?: number;
+    btDistribution?: string[];
+    difficulty?: string;
+    assessmentType?: string;
   };
   try {
-    const result = await generateQuestionsFromSyllabusService(
-      { syllabus: documentText || '', examLength: numQuestions || 5 },
-      getCtx(req)
-    );
+    const result = await generateMospiAssessmentService(payload, getCtx(req));
     res.status(200).json(result);
   } catch (err) {
     console.error('[aiController] generateMospiAssessment error:', err);
     res.status(200).json([]);
   }
 };
+
+// ─── 15. Extract Uploaded Questions ───────────────────────────────────────────
+export const extractUploadedQuestions = async (req: Request, res: Response): Promise<void> => {
+  const { documentText, competencyCode, cadre } = req.body as {
+    documentText?: string;
+    competencyCode?: string;
+    cadre?: string;
+  };
+  try {
+    const result = await extractQuestionsFromDocumentService(
+      { documentText, competencyCode, cadre },
+      getCtx(req)
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[aiController] extractUploadedQuestions error:', err);
+    res.status(200).json([]);
+  }
+};
+
 

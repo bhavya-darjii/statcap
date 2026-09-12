@@ -406,9 +406,23 @@ export const generateMospiAssessment = async (payload: {
 }) => {
   try {
     return await aiPost('generate-mospi-assessment', payload);
-  } catch (error) {
+  } catch (error: any) {
     console.error("MoSPI Assessment Generation Error:", error);
     return { error: error.message || "Failed to generate assessment." };
   }
 };
+
+export const extractUploadedQuestions = async (payload: {
+  documentText: string;
+  competencyCode?: string;
+  cadre?: string;
+}) => {
+  try {
+    return await aiPost('extract-uploaded-questions', payload);
+  } catch (error: any) {
+    console.error("Extract Questions Error:", error);
+    return { error: error.message || "Failed to extract questions." };
+  }
+};
+
 

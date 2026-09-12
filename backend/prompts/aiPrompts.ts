@@ -579,3 +579,99 @@ Raw Syllabus Text:
 ${rawText.substring(0, 40000)}
 """
 `;
+
+/**
+ * 16. Extract Questions from Uploaded Exam Document / Question Paper
+ */
+export const buildExtractQuestionsPrompt = (
+  documentText: string,
+  competencyCode?: string,
+  cadre?: string
+) => `
+Role: Senior Examination Controller and MoSPI Question Ingestion Engine.
+Task: Parse and extract all questions from this uploaded examination paper, test sheet, or question bank document into a standardized multiple-choice question format.
+
+Target Cadre: ${cadre || 'Indian Statistical Service (ISS / SSS)'}
+Competency Focus: ${competencyCode || 'STAT_SNA'}
+
+Input Document Text:
+"""
+${documentText.substring(0, 35000)}
+"""
+
+CRITICAL EXTRACTION INSTRUCTIONS:
+1. Extract ALL distinct questions present in the document.
+2. For each question, extract or reconstruct exactly 4 multiple-choice options (A, B, C, D). If the original text is an open question or numerical problem, provide the correct answer as one option and 3 plausible, rigorous distractor options.
+3. Determine the 0-based index of the correct option (0 for A, 1 for B, 2 for C, 3 for D).
+4. Assign an appropriate Bloom's Taxonomy cognitive level: "L1 Remember", "L2 Understand", "L3 Apply", "L4 Analyze", or "L5 Evaluate".
+5. Provide a 10-mark default for each question.
+6. Extract or generate an official MoSPI manual / statutory citation (e.g., "Ref: MoSPI Implementation Manual, Chapter 3").
+7. DO NOT use emojis anywhere in the output.
+8. Output MUST be ONLY a raw JSON array matching the schema below.
+
+JSON Schema:
+[
+  {
+    "id": "q-1",
+    "statement": "Question statement text here",
+    "options": [
+      "Option A text",
+      "Option B text",
+      "Option C text",
+      "Option D text"
+    ],
+    "correctIndex": 0,
+    "btLevel": "L3 Apply",
+    "marks": 10,
+    "citation": "Ref: MoSPI Official Standard"
+  }
+]
+`;
+
+/**
+ * 17. Generate MoSPI Assessment Framework from Blueprint & Manual
+ */
+export const buildMospiAssessmentPrompt = (
+  documentText: string,
+  competencyCode: string,
+  cadre: string,
+  numQuestions: number,
+  btDistribution?: string[],
+  difficulty?: string,
+  assessmentType?: string
+) => `
+Role: Senior Assessment Architect for the National Statistical Systems Training Academy (NSSTA) & Ministry of Statistics and Programme Implementation (MoSPI).
+Task: Synthesize a high-stakes, practical evaluation exam for civil services officers.
+
+Parameters:
+- Competency: ${competencyCode}
+- Cadre: ${cadre}
+- Number of Questions: ${numQuestions}
+- Cognitive Levels: ${(btDistribution || ['L2 Understand', 'L3 Apply', 'L4 Analyze']).join(', ')}
+- Difficulty: ${difficulty || 'Intermediate'}
+- Assessment Type: ${assessmentType || 'Diagnostic Evaluation'}
+
+Reference MoSPI Manual Text:
+"""
+${documentText.substring(0, 30000)}
+"""
+
+CRITICAL INSTRUCTIONS:
+1. Synthesize exactly ${numQuestions} multiple-choice questions grounded in official MoSPI methodologies.
+2. Every question must have exactly 4 choices (A, B, C, D), a zero-based correctIndex, a Bloom's level tag, 10 marks, and an authentic MoSPI manual reference.
+3. No emojis. Output ONLY a valid JSON array.
+
+JSON Schema:
+[
+  {
+    "id": "q-1",
+    "statement": "...",
+    "options": ["A", "B", "C", "D"],
+    "correctIndex": 0,
+    "btLevel": "L3 Apply",
+    "marks": 10,
+    "citation": "Ref: MoSPI Manual..."
+  }
+]
+`;
+
