@@ -24,6 +24,7 @@ import {
   parseSyllabusService,
   extractQuestionsFromDocumentService,
   generateMospiAssessmentService,
+  ragSearchService,
 } from '../services/aiGenerationService.js';
 
 interface TeacherCtx {
@@ -268,5 +269,26 @@ export const extractUploadedQuestions = async (req: Request, res: Response): Pro
     res.status(200).json([]);
   }
 };
+
+// ─── 16. Standalone RAG Vector Search ─────────────────────────────────────────
+export const ragSearchManual = async (req: Request, res: Response): Promise<void> => {
+  const { documentText, query, topK, documentTitle } = req.body as {
+    documentText?: string;
+    query?: string;
+    topK?: number;
+    documentTitle?: string;
+  };
+  try {
+    const result = await ragSearchService(
+      { documentText, query, topK, documentTitle },
+      getCtx(req)
+    );
+    res.status(200).json(result);
+  } catch (err) {
+    console.error('[aiController] ragSearchManual error:', err);
+    res.status(500).json({ error: 'RAG search failed', passages: [] });
+  }
+};
+
 
 

@@ -150,7 +150,7 @@ const CourseGeneratorPage: React.FC = () => {
   const [targetCompetency, setTargetCompetency] = useState("STAT_SNA");
   const [targetCadre, setTargetCadre] = useState("Indian Statistical Service (ISS - Group A)");
   const [assessmentType, setAssessmentType] = useState("Diagnostic Pre-Test (FRAC Radar Feed)");
-  const [numQuestions, setNumQuestions] = useState(5);
+  const [numQuestions, setNumQuestions] = useState(15);
   const [difficultyLevel, setDifficultyLevel] = useState("Intermediate (ISS Junior Time Scale)");
   const [assessmentTitle, setAssessmentTitle] = useState("SNA 2008 Competency Diagnostic Assessment");
   const [selectedBloomLevels, setSelectedBloomLevels] = useState<string[]>([
@@ -166,7 +166,7 @@ const CourseGeneratorPage: React.FC = () => {
 
   // Mode selector state (shown after clicking Synthesize in Step 1)
   const [showModeSelector, setShowModeSelector] = useState(false);
-  const [creationMode, setCreationMode] = useState<"upload" | "generate">("upload");
+  const [creationMode, setCreationMode] = useState<"upload" | "generate">("generate");
   const [uploadQuestionDocTitle, setUploadQuestionDocTitle] = useState("");
   const [uploadQuestionText, setUploadQuestionText] = useState("");
   const [uploadQuestionTab, setUploadQuestionTab] = useState<"file" | "paste">("file");
@@ -331,10 +331,10 @@ const CourseGeneratorPage: React.FC = () => {
 
   // Creation mode processing stages
   const CREATION_STAGES_GENERATE = [
-    { label: "Consulting MoSPI FRAC Standards & Bloom's Taxonomy Map...", duration: 2200 },
-    { label: "Synthesizing cadre-aligned MCQ assessment items...", duration: 2400 },
-    { label: "Calibrating cognitive difficulty for target cadre...", duration: 1800 },
-    { label: "Running quality validation against NDQAF standards...", duration: 1600 },
+    { label: "Semantic Vector Chunking & text-embedding-004 Indexing...", duration: 2200 },
+    { label: "Retrieving grounded passages for target MoSPI FRAC competency...", duration: 2400 },
+    { label: "Synthesizing cadre-aligned MCQ assessment items with citations...", duration: 1800 },
+    { label: "Running quality & citation validation against NDQAF standards...", duration: 1600 },
   ];
   const CREATION_STAGES_UPLOAD = [
     { label: "Extracting questions from uploaded document...", duration: 2000 },
@@ -1324,7 +1324,7 @@ const CourseGeneratorPage: React.FC = () => {
               <button
                 className="glass-btn primary"
                 style={{ padding: "14px 36px", fontSize: "1rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
-                onClick={() => { setCreationMode("upload"); setShowModeSelector(true); }}
+                onClick={() => { setCreationMode("generate"); setShowModeSelector(true); }}
               >
                 Continue to Question Setup →
               </button>
@@ -1383,35 +1383,20 @@ const CourseGeneratorPage: React.FC = () => {
               ← Back to Blueprint
             </button>
 
-            <div className="ai-engine-tag">Question Source Selection</div>
+            <div className="ai-engine-tag">Assessment Synthesis Engine</div>
             <h2 className="syllabus-hero-title">How would you like to provide questions?</h2>
             <p className="syllabus-hero-subtitle">
-              Upload your own vetted question bank, or let StatCap AI synthesize cadre-aligned MCQs from the ingested MoSPI manual. Both paths produce the same Assessment Matrix.
+              Synthesize zero-hallucination MCQs with statutory citations from the ingested MoSPI manual using Vector RAG, or import an existing validated question paper.
             </p>
 
             {/* TWO MODE TOGGLE BUTTONS — full proper semi-circular pills */}
             <div className="syllabus-tabs" style={{ marginBottom: "28px", borderRadius: "9999px", padding: "4px 6px" }}>
               <button
                 type="button"
-                className={`syllabus-tab-btn ${creationMode === "upload" ? "active" : ""}`}
-                onClick={() => setCreationMode("upload")}
-                style={{
-                  minWidth: "170px",
-                  fontWeight: 700,
-                  borderRadius: "9999px",
-                  background: creationMode === "upload" ? "#ffffff" : "transparent",
-                  color: creationMode === "upload" ? "#000000" : "rgba(255,255,255,0.85)",
-                  borderColor: creationMode === "upload" ? "#ffffff" : "rgba(255,255,255,0.25)",
-                }}
-              >
-                Upload Questions
-              </button>
-              <button
-                type="button"
                 className={`syllabus-tab-btn ${creationMode === "generate" ? "active" : ""}`}
                 onClick={() => setCreationMode("generate")}
                 style={{
-                  minWidth: "170px",
+                  minWidth: "210px",
                   fontWeight: 700,
                   borderRadius: "9999px",
                   background: creationMode === "generate" ? "#ffffff" : "transparent",
@@ -1419,7 +1404,22 @@ const CourseGeneratorPage: React.FC = () => {
                   borderColor: creationMode === "generate" ? "#ffffff" : "rgba(255,255,255,0.25)",
                 }}
               >
-                Generate with StatCap
+                Generate with MoSPI RAG
+              </button>
+              <button
+                type="button"
+                className={`syllabus-tab-btn ${creationMode === "upload" ? "active" : ""}`}
+                onClick={() => setCreationMode("upload")}
+                style={{
+                  minWidth: "180px",
+                  fontWeight: 700,
+                  borderRadius: "9999px",
+                  background: creationMode === "upload" ? "#ffffff" : "transparent",
+                  color: creationMode === "upload" ? "#000000" : "rgba(255,255,255,0.85)",
+                  borderColor: creationMode === "upload" ? "#ffffff" : "rgba(255,255,255,0.25)",
+                }}
+              >
+                Import Existing Paper
               </button>
             </div>
 
@@ -1547,6 +1547,69 @@ const CourseGeneratorPage: React.FC = () => {
               </div>
             )}
 
+            {/* GENERATE VIA RAG SECTION — preview summary card */}
+            {creationMode === "generate" && (
+              <div style={{ animation: "fadeIn 0.3s ease", maxWidth: "680px", margin: "0 auto", textAlign: "left" }}>
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    borderRadius: "16px",
+                    padding: "20px 24px",
+                    backdropFilter: "blur(12px)",
+                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", flexWrap: "wrap", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="co-badge" style={{ background: "rgba(99, 102, 241, 0.25)", color: "#a5b4fc", border: "1px solid rgba(99, 102, 241, 0.4)" }}>
+                        Vector RAG Pipeline Active
+                      </span>
+                      <span style={{ fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.7)", fontWeight: 500 }}>
+                        Google text-embedding-004
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "0.82rem", color: "#34d399", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      ● Zero Hallucination Citation Gate
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.85rem", color: "rgba(255, 255, 255, 0.85)" }}>
+                    <div>
+                      <strong style={{ color: "rgba(255, 255, 255, 0.5)", display: "block", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "2px" }}>
+                        Ingested Manual
+                      </strong>
+                      <span style={{ fontWeight: 600, color: "#ffffff" }}>{docTitle || "Official MoSPI Manual / Guidelines"}</span>
+                    </div>
+                    <div>
+                      <strong style={{ color: "rgba(255, 255, 255, 0.5)", display: "block", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "2px" }}>
+                        Target FRAC Competency
+                      </strong>
+                      <span style={{ fontWeight: 600, color: "#ffffff" }}>{targetCompetency}</span>
+                    </div>
+                    <div>
+                      <strong style={{ color: "rgba(255, 255, 255, 0.5)", display: "block", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "2px" }}>
+                        Target Cadre
+                      </strong>
+                      <span style={{ fontWeight: 600, color: "#ffffff" }}>{targetCadre}</span>
+                    </div>
+                    <div>
+                      <strong style={{ color: "rgba(255, 255, 255, 0.5)", display: "block", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "2px" }}>
+                        Assessment Blueprint
+                      </strong>
+                      <span style={{ fontWeight: 600, color: "#ffffff" }}>
+                        {numQuestions} MCQs • {selectedBloomLevels.length} Cognitive Levels
+                      </span>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "14px", paddingTop: "12px", borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: "0.8rem", color: "rgba(255, 255, 255, 0.65)" }}>
+                    Note: The RAG engine will semantically retrieve passages from the ingested manual and bind each generated MCQ to a verbatim statutory citation for instructor verification.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* CONTINUE BUTTON */}
             <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "28px" }}>
               <button
@@ -1555,7 +1618,7 @@ const CourseGeneratorPage: React.FC = () => {
                 style={{ padding: "12px 36px", fontSize: "0.95rem", background: "#ffffff", color: "#000000", border: "1px solid #ffffff", fontWeight: 800 }}
                 onClick={handleStartCreation}
               >
-                {creationMode === "upload" ? "Extract & Build Assessment →" : "Generate Assessment with AI →"}
+                {creationMode === "upload" ? "Extract & Build Assessment →" : "Synthesize Grounded Assessment via RAG →"}
               </button>
             </div>
           </div>

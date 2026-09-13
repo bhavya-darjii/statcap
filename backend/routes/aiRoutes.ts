@@ -15,6 +15,7 @@ import {
   parseSyllabus,
   generateMospiAssessment,
   extractUploadedQuestions,
+  ragSearchManual,
 } from '../controllers/aiController.js';
 import {
   generateRubric,
@@ -50,6 +51,6 @@ router.post('/generate-lecture-presentation', generateLecturePresentation);
 router.post('/parse-syllabus',               parseSyllabus);
 router.post('/generate-mospi-assessment',    generateMospiAssessment);
 router.post('/extract-uploaded-questions',   extractUploadedQuestions);
-
+router.post('/rag-search',                  ragSearchManual);
 
 export default router;

@@ -629,10 +629,10 @@ JSON Schema:
 `;
 
 /**
- * 17. Generate MoSPI Assessment Framework from Blueprint & Manual
+ * 17. Generate MoSPI Assessment Framework from Blueprint & Retrieved RAG Passages
  */
 export const buildMospiAssessmentPrompt = (
-  documentText: string,
+  retrievedPassagesText: string,
   competencyCode: string,
   cadre: string,
   numQuestions: number,
@@ -641,7 +641,15 @@ export const buildMospiAssessmentPrompt = (
   assessmentType?: string
 ) => `
 Role: Senior Assessment Architect for the National Statistical Systems Training Academy (NSSTA) & Ministry of Statistics and Programme Implementation (MoSPI).
-Task: Synthesize a high-stakes, practical evaluation exam for civil services officers.
+Task: Synthesize a high-stakes, practical evaluation exam for civil services officers based strictly on the retrieved statutory manual passages below.
+
+CRITICAL RAG SOURCE-GROUNDING MANDATE:
+1. Synthesize all ${numQuestions} questions STRICTLY from the provided retrieved MoSPI manual passages below.
+2. DO NOT hallucinate facts, numbers, or rules not present in these retrieved passages.
+3. Every question must have exactly 4 choices (A, B, C, D), a zero-based correctIndex, a Bloom's cognitive level tag, and 10 marks.
+4. MANDATORY CITATION: For every question, the "citation" field MUST cite the exact passage reference from which the question was formulated (e.g., "Ref: MoSPI SNA Manual, Chapter 4 — Section 4.2").
+5. Do NOT use emojis anywhere in the output.
+6. Output ONLY a valid, raw JSON array matching the schema below.
 
 Parameters:
 - Competency: ${competencyCode}
@@ -651,26 +659,21 @@ Parameters:
 - Difficulty: ${difficulty || 'Intermediate'}
 - Assessment Type: ${assessmentType || 'Diagnostic Evaluation'}
 
-Reference MoSPI Manual Text:
+Retrieved MoSPI Manual Passages (Vector RAG Output):
 """
-${documentText.substring(0, 30000)}
+${retrievedPassagesText}
 """
-
-CRITICAL INSTRUCTIONS:
-1. Synthesize exactly ${numQuestions} multiple-choice questions grounded in official MoSPI methodologies.
-2. Every question must have exactly 4 choices (A, B, C, D), a zero-based correctIndex, a Bloom's level tag, 10 marks, and an authentic MoSPI manual reference.
-3. No emojis. Output ONLY a valid JSON array.
 
 JSON Schema:
 [
   {
     "id": "q-1",
-    "statement": "...",
-    "options": ["A", "B", "C", "D"],
+    "statement": "Clear, technically rigorous question stem testing understanding of the retrieved passage.",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctIndex": 0,
     "btLevel": "L3 Apply",
     "marks": 10,
-    "citation": "Ref: MoSPI Manual..."
+    "citation": "Ref: MoSPI Official Standard"
   }
 ]
 `;

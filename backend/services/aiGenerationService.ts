@@ -8,6 +8,7 @@
 
 import { callGemini } from '../utils/gemini.js';
 import { logAiUsage } from '../utils/logAiUsage.js';
+import { retrieveTopKPassages, formatRetrievedContext } from './ragService.js';
 import {
   buildRoadmapPrompt, roadmapSystem,
   buildTheoryQuestionsPrompt, theoryQuestionsSystem,
@@ -433,10 +434,11 @@ export const extractQuestionsFromDocumentService = async (
   }
 };
 
-// --- Generate MoSPI assessment from blueprint & manual ----------------------
+// --- Generate MoSPI assessment from blueprint & manual (Vector RAG) ---------
 export const generateMospiAssessmentService = async (
   payload: {
     documentText?: string;
+    documentTitle?: string;
     competencyCode?: string;
     cadre?: string;
     numQuestions?: number;
@@ -446,21 +448,55 @@ export const generateMospiAssessmentService = async (
   },
   ctx: Ctx,
 ) => {
+  const compCode = payload.competencyCode || 'STAT_SNA';
+  const cadre = payload.cadre || 'Indian Statistical Service (ISS - Group A)';
+  const numQuestions = payload.numQuestions || 15;
+  const docTitle = payload.documentTitle || 'MoSPI Official Guidelines';
+
+  // 1. Formulate targeted RAG query
+  const query = `${compCode} ${cadre} ${payload.difficulty || ''} methodology estimation calculation rules standards`;
+
+  // 2. Vector RAG Retrieval: Retrieve top semantically relevant passages
+  let retrievedContext = '';
+  try {
+    const topK = Math.min(Math.max(Math.ceil(numQuestions / 3), 4), 8);
+    const retrieved = await retrieveTopKPassages(
+      payload.documentText || '',
+      query,
+      topK,
+      docTitle
+    );
+    retrievedContext = formatRetrievedContext(retrieved);
+    console.log(`[RAG] Retrieved ${retrieved.length} grounded passages for ${compCode} (Top Score: ${retrieved[0]?.score ?? 0})`);
+  } catch (ragErr) {
+    console.warn('[RAG] Fallback to direct excerpt:', ragErr);
+    retrievedContext = (payload.documentText || '').slice(0, 15000);
+  }
+
+  // 3. Synthesize Citation-Gated MCQs using retrieved passages
   const prompt = buildMospiAssessmentPrompt(
-    payload.documentText || '',
-    payload.competencyCode || 'STAT_SNA',
-    payload.cadre || 'Indian Statistical Service (ISS - Group A)',
-    payload.numQuestions || 5,
+    retrievedContext,
+    compCode,
+    cadre,
+    numQuestions,
     payload.btDistribution,
     payload.difficulty,
     payload.assessmentType,
   );
+
   const data = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: 'application/json' },
   });
+
   const usage = data.usageMetadata || {};
-  await logAiUsage({ action: 'generate-mospi-assessment', inputTokens: usage.promptTokenCount || 0, outputTokens: usage.candidatesTokenCount || 0, ...ctx });
+  await logAiUsage({
+    action: 'generate-mospi-assessment-rag',
+    inputTokens: usage.promptTokenCount || 0,
+    outputTokens: usage.candidatesTokenCount || 0,
+    ...ctx,
+  });
+
   if (data.error || !data.candidates?.[0]) return [];
   try {
     const parsed = parseJson(data.candidates[0].content.parts[0].text);
@@ -469,4 +505,23 @@ export const generateMospiAssessmentService = async (
     return [];
   }
 };
+
+// --- Standalone RAG Search Service ------------------------------------------
+export const ragSearchService = async (
+  payload: {
+    documentText?: string;
+    query?: string;
+    topK?: number;
+    documentTitle?: string;
+  },
+  _ctx: Ctx,
+) => {
+  const { documentText = '', query = '', topK = 4, documentTitle = 'MoSPI Document' } = payload;
+  if (!documentText.trim() || !query.trim()) {
+    return { passages: [], query };
+  }
+  const passages = await retrieveTopKPassages(documentText, query, topK, documentTitle);
+  return { passages, query };
+};
+
 

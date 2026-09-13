@@ -152,3 +152,57 @@ export const callGemini = async (bodyPayload: Record<string, unknown>): Promise<
   console.error('[gemini] 🚨 All API keys and model fallbacks exhausted. No response from Gemini.');
   throw lastError;
 };
+
+const EMBEDDING_MODELS = ['gemini-embedding-001', 'gemini-embedding-2-preview'];
+
+/**
+ * Generate vector embeddings for a batch of text strings.
+ * Rotates across the LRU API key pool and falls back across embedding models.
+ *
+ * @param texts - Array of text strings to embed
+ * @returns Array of embedding vectors (number[][])
+ */
+export const embedTexts = async (texts: string[]): Promise<number[][]> => {
+  if (API_KEYS.length === 0) {
+    throw new Error('No GOOGLE_API_KEYS configured on the server.');
+  }
+  if (!texts || texts.length === 0) return [];
+
+  let lastError: unknown;
+  for (const model of EMBEDDING_MODELS) {
+    let sortedIndices = API_KEYS
+      .map((_, i) => i)
+      .filter(i => !deadKeys.has(API_KEYS[i].email))
+      .sort((a, b) => lastUsedTimes[a] - lastUsedTimes[b]);
+
+    if (sortedIndices.length === 0) {
+      deadKeys.clear();
+      sortedIndices = API_KEYS.map((_, i) => i);
+    }
+
+    for (const keyIndex of sortedIndices) {
+      const { email, client } = API_KEYS[keyIndex];
+      lastUsedTimes[keyIndex] = Date.now();
+
+      try {
+        const response: any = await client.models.embedContent({
+          model,
+          contents: texts,
+        });
+
+        if (response?.embeddings && Array.isArray(response.embeddings)) {
+          return response.embeddings.map((e: any) => e.values as number[]);
+        }
+        if (response?.embedding?.values) {
+          return [response.embedding.values as number[]];
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[gemini-embed] ⚠️ Key [${email}] failed on ${model}: ${err?.message || err}`);
+      }
+    }
+  }
+
+  throw lastError || new Error('All embedding keys and models failed');
+};
+

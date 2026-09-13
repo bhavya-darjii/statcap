@@ -425,4 +425,19 @@ export const extractUploadedQuestions = async (payload: {
   }
 };
 
+export const ragSearchManual = async (payload: {
+  documentText: string;
+  query: string;
+  topK?: number;
+  documentTitle?: string;
+}) => {
+  try {
+    return await aiPost('rag-search', payload);
+  } catch (error: any) {
+    console.error("RAG Search Error:", error);
+    return { error: error.message || "Failed to execute RAG search.", passages: [] };
+  }
+};
+
+
 
