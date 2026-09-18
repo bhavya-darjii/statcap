@@ -106,7 +106,7 @@ StatCap AI resolves this operational challenge through a **Dual-Engine Sovereign
 | Frontend Framework | React 19, TypeScript, Vite |
 | Backend Server | Node.js, Express, TypeScript |
 | Database & Vectors | Supabase (PostgreSQL with `pgvector`) |
-| Artificial Intelligence | Google Gemini (`gemini-2.5-flash`), `gemini-embedding-001` (3072D) |
+| Artificial Intelligence | Google Gemini (`gemini-3.8-flash`), `gemini-embedding-001` (3072D) |
 | Blockchain Ledger | Polygon Amoy Testnet, Solidity (`MoSPICredentialRegistry.sol`) |
 | Web3 Integration | Ethers.js v6, Hardhat |
 
