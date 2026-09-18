@@ -272,3 +272,7 @@ Open your browser at `http://localhost:5173` to explore the StatCap AI platform.
 
 Developed for the **Smart India Hackathon (SIH) 2026** under Problem Statement **SIH26101**.  
 Special recognition to the **Ministry of Statistics and Programme Implementation (MoSPI)**, the **National Statistical Systems Training Academy (NSSTA)**, the **All India Council for Technical Education (AICTE)**, and the **Ministry of Education's Innovation Cell (MIC)**.
+
+---
+
+<p align="center">Made with ❤️ by <a href="https://bhavya-darji.vercel.app/" target="_blank" rel="noopener noreferrer"><strong>Bhavya Darji</strong></a></p>
